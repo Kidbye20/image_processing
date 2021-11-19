@@ -87,6 +87,15 @@ cv::Mat faster_2_gaussi_filter_channel(const cv::Mat& noise_channel, const int k
     // 获取图像边界信息
     const int H = noise_channel.rows;
     const int W = noise_channel.cols;
+    const int C = noise_channel.channels();
+    if(C not_eq 1) {
+        std::cout << "该函数只接受单通道图像的高斯滤波!" << std::endl;
+        return noise_channel;
+    }
+    if(kernel_size % 2 == 0 or kernel_size <= 0) {
+        std::cout << "滤波核的大小非法, 应当为正奇数!" << std::endl;
+        return noise_channel;
+    }
     // 首先求 x 方向和 y 方向的模板
     const auto x_space_table = get_filter_table(kernel_size, variance_x);
     const auto y_space_table = get_filter_table(kernel_size, variance_y);
@@ -126,6 +135,7 @@ cv::Mat faster_2_gaussi_filter_channel(const cv::Mat& noise_channel, const int k
 	    double* const row_ptr_2 = temp_ptr + radius + (H2 - 1 - 2 * radius + i) * padded_image.step;
 	    for(int j = 0;j < W; ++j) row_ptr[j] = row_ptr_2[j];
 	}
+	// 其实角落里也需要填, 不然四个顶角会发暗
     // 再做 Y 方向上的一维高斯滤波, 以 H 为边界
 	for (int i = 0; i < H; ++i) {
 	    uchar* const row_ptr_denoise = denoise_channel.data + i * denoise_channel.step;

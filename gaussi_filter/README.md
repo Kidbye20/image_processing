@@ -58,11 +58,116 @@ Z_x &= \sum_{(x,y) \in \Omega}{\frac{1}{2\pi {\sigma}^2} {e^{-\frac{{(x - x_0)}^
 Z_y &= \sum_{(x,y) \in \Omega}{\frac{1}{2\pi {\sigma}^2} {e^{-\frac{{(y - y_0)}^2}{2{\sigma}^2}}}}
 \end{aligned}
 $$
-分别对 x, y 计算，到底节省计算在哪里？哪里有重复计算 ? 搞清楚
+代入到图像滤波中，先对 $X$ 方向做一次一维的高斯滤波，再对 $Y$ 方向做一次一维的高斯滤波,
+
+关键就是，做 $Y$ 方向滤波是在经过了 $X$ 方向滤波的结果上继续滤波。
+
+**举个例子**
+
+滤波核大小为 **3**，中间的点位置为 **5**，则正常的二维高斯滤波，有
+$$
+\begin{aligned}
+Gaussi(V_5) &= w^{xy}_1 \cdot v_1 + w^{xy}_2 \cdot v_2 + w^{xy}_3 \cdot v_3 \\
+&+ w^{xy}_4 \cdot v_4 + w^{xy}_5 \cdot v_5 + w^{xy}_6 \cdot v_6 \\
+&+ w^{xy}_7 \cdot v_7 + w^{xy}_8 \cdot v_8 + w^{xy}_9 \cdot v_9
+\end{aligned}
+$$
+但其实，上面的 9 个权重 $w_i$ ，其实只有 **3** 个值，$w_1,w_2,w_5$。
+
+如果是分成 $X$ 方向和 $Y$ 方向的两次一维滤波，有
+$$
+\begin{aligned}
+\hat{Gaussi(V_5)} &= w^y_1 \cdot (w^x_1 \cdot v_1 + w^x_2 \cdot v_2 + w^x_3 \cdot v_3) \\
+&+ w^y_2 \cdot (w^x_1 \cdot v_4 + w^x_2 \cdot v_5 + w^x_3 \cdot v_6) \\
+&+ w^y_3 \cdot (w^x_1 \cdot v_7 + w^x_2 \cdot v_8 + w^x_3 \cdot v_9)
+\end{aligned}
+$$
+上面两串，随便选出一项，二者都是等价的（忽略前面的归一化项，都是一样的，而且滤波核一定，这俩归一化项也定了）
+
+比如，$v_1$ 点的权重 $w^{xy}_1$ 跟 $w_1^y \cdot w_1^x$，这二者，展开，分别是 $e^{-\frac{{(x_1 - x_5)}^2 + {(y_1 - y_5)}^2}{2{\sigma}^2}}$ 跟 $e^{-\frac{{(x_1 - x_5)}^2}{2{\sigma}^2}} \cdot e^{-\frac{{(y_1 - x_5)}^2}{2{\sigma}^2}}$ ；
+
+比如，$v_2$ 点的权重 $w^{xy}_2$ 跟 $w_1^y \cdot w_2^x$，这二者，展开，分别是 $e^{-\frac{{(x_2 - x_5)}^2 + {(y_2 - y_5)}^2}{2{\sigma}^2}}$ 跟 $e^{-\frac{{(x_2 - x_5)}^2}{2{\sigma}^2}} \cdot e^{-\frac{{(y_1 - x_5)}^2}{2{\sigma}^2}}$ ，后者的第二项 $e^{-\frac{{(y_1 - x_5)}^2}{2{\sigma}^2}}$ 和 $e^{-\frac{{(y_2 - x_5)}^2}{2{\sigma}^2}}$ 是等价的，因为对于$v_1$ 和 $v_2$ 而言，在 $Y$ 方向上和 $v_5$ 的距离都是 1，是相等的，所以，$v_2$ 的权重等价于 $w_2^y \cdot w_2^x$；
+
+...
+
+比如，$v_8$ 点的权重 $w^{xy}_8$ 跟 $w_3^y \cdot w_2^x$，照搬前面利用高斯核对称的性质，可以得出，前者 $w^{xy}_8$ 等价于 $w^{xy}_2$ ，后者等价于 $w_2^y \cdot w_2^x$ ，这俩一样的。
+
+所以，很容易联想到，滤波核大小是 5，7，9.... (2n + 1) 时，这个也是成立的。
+
+
+
+## 结果
+
+滤波核大小  11，标准差 $\delta = 3$，滤波结果展示：
+
+从左到右，分别是  噪声图<===>普通2D高斯去噪<===>快速高斯去噪<===>快速高斯去噪 + 边缘处理<===>OpenCV
+
+![](images/markdown/base_result_gray.png)
+
+```yaml
+第一次写     :   29 ms
+改进后的     :   6 ms
+边缘改进     :   4 ms
+OpenCV 自带  :  1 ms
+PSNR       :   66.02db
+```
+
+从左到右，分别是  噪声图<===>普通2D高斯去噪<===>快速1D高斯去噪<===>OpenCV
+
+![](images/markdown/base_result.png)
+
+```yaml
+高  :  500
+宽  :  500
+通道 :  3
+第一次写  :   90 ms
+改进之后  :   13 ms
+OpenCV   :   4 ms
+PSNR     :   63.59db
+```
+
+### **高斯核大小不变，方差变化**
+
+标准差 $\delta = 0.5$
+
+![](images/markdown/delta_0.5.png)
+
+标准差 $\delta = 1.5$
+
+![](images/markdown/delta_1.5.png)
+
+标准差 $\delta = 4.5$
+
+![](images/markdown/delta_4.5.png)
+
+标准差 $\delta = 20.0$
+
+![](images/markdown/delta_20.png)
+
+
+
+### 方差不变，高斯核大小变化
+
+kernel = 3
+
+![](images/markdown/kernel_3.png)
+
+kernel = 7
+
+![](images/markdown/kernel_7.png)
+
+kernel = 15
+
+![](images/markdown/kernel_15.png)
 
 
 
 ## 实现细节
 
+1. 2D 原始的高斯滤波
 
+   普通的二维高斯滤波虽然很简单，就窗口内加权平均，但里面还是有一些加速小技巧的。
 
+2. 1D 改进的高斯滤波
+
+   两个一维的高斯滤波，时间复杂度上就已经加速很多了，但实现细节上还有一些小技巧。
