@@ -5,7 +5,7 @@
 #include <iostream>
 // self
 #include "gaussi_filter.h"
-
+#include "faster_gaussi_filter.h"
 
 namespace {
     void run(const std::function<void()>& work=[]{}, const std::string message="") {
@@ -39,6 +39,12 @@ namespace {
         cv::hconcat(std::vector<cv::Mat>({lhs, rhs}), result);
         return result;
     }
+
+    cv::Mat cv_concat(const std::vector<cv::Mat> images) {
+        cv::Mat result;
+        cv::hconcat(images, result);
+        return result;
+    }
 }
 
 
@@ -49,30 +55,44 @@ void test_bgr_image(const cv::Mat& noise_image) {
     const int kernel_size = 11;
     const double variance = 3;
     // self
-    cv::Mat gaussi_result;
+    cv::Mat gaussi_result, faster_gaussi_result, opencv_gaussi_result;
     run([&noise_image, &gaussi_result, kernel_size, variance]{
         gaussi_result = gaussi_filter(noise_image, kernel_size, variance);
-    }, "My      :  ");
-    cv_show(cv_concat(noise_image, gaussi_result));
+    }, "第一次写  :  ");
+    run([&noise_image, &faster_gaussi_result, kernel_size, variance]{
+        faster_gaussi_result = faster_gaussi_filter(noise_image, kernel_size, variance);
+    }, "改进之后  :  ");
     // OpenCV
-    run([&noise_image, &gaussi_result, kernel_size, variance]{
-        GaussianBlur(noise_image, gaussi_result, cv::Size(kernel_size, kernel_size), variance, variance);;
-    }, "OpenCV  :  ");
+    run([&noise_image, &opencv_gaussi_result, kernel_size, variance]{
+        GaussianBlur(noise_image, opencv_gaussi_result, cv::Size(kernel_size, kernel_size), variance, variance);;
+    }, "OpenCV   :  ");
+    std::cout << "PSNR  " << cv::PSNR(gaussi_result, faster_gaussi_result) << std::endl;
     // 并排展示去噪结果
-    cv_show(cv_concat(noise_image, gaussi_result));
+    cv_show(cv_concat(std::vector<cv::Mat>({noise_image, gaussi_result, faster_gaussi_result, opencv_gaussi_result})));
 }
+
+
 
 void test_gray_image(const cv::Mat& noise_image) {
     cv::Mat gray_noise_image;
     cv::cvtColor(noise_image, gray_noise_image, cv::COLOR_BGR2GRAY);
+    cv::Mat gaussi_result, faster_gaussi_result, faster_2_gaussi_result, opencv_gaussi_result;
     run([&](){
-        const auto gray_denoised_image = gaussi_filter_channel(gray_noise_image, 11, 3);
-    });
+        gaussi_result = gaussi_filter_channel(gray_noise_image, 11, 3);
+    }, "第一次写     ");
+    run([&]() {
+        faster_gaussi_result = faster_gaussi_filter_channel(gray_noise_image, 11, 3, 3);
+    }, "改进后的     ");
+    run([&]() {
+        faster_2_gaussi_result = faster_2_gaussi_filter_channel(gray_noise_image, 11, 3, 3);
+    }, "边缘改进     ");
     run([&](){
-        cv::Mat gray_denoised_image;
-        cv::GaussianBlur(gray_noise_image, gray_denoised_image, cv::Size(11, 11), 3, 3);
-    });
-    // cv_show(cv_concat(gray_noise_image, gray_denoised_image));
+        cv::GaussianBlur(gray_noise_image, opencv_gaussi_result, cv::Size(11, 11), 3, 3);
+    }, "OpenCV 自带  ");
+    // 这个 PSNR 不可能无穷大, 因为在四个边角, 两个方向的高斯滤波是没有计算那一块的
+    std::cout << "PSNR  " << cv::PSNR(gaussi_result, faster_gaussi_result) << " ===>  ";
+    std::cout << cv::PSNR(gaussi_result, faster_2_gaussi_result) << std::endl;
+    cv_show(cv_concat(std::vector<cv::Mat>({gray_noise_image, gaussi_result, faster_gaussi_result, faster_2_gaussi_result, opencv_gaussi_result})));
 }
 
 int main() {
@@ -84,7 +104,7 @@ int main() {
         std::cout << "读取图片  " << noise_path << "  失败 !" << std::endl;
         return 0;
     }
-    // test_bgr_image(noise_image);
-    test_gray_image(noise_image);
+     test_bgr_image(noise_image);
+//    test_gray_image(noise_image);
     return 0;
 }

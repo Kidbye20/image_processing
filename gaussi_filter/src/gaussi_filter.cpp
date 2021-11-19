@@ -82,7 +82,7 @@ cv::Mat gaussi_filter_channel(const cv::Mat& noise_channel, const int kernel_siz
 
 // 现在只是单通道的高斯去噪, 会不会更慢? 感觉速度上会更慢点
 cv::Mat gaussi_filter(const cv::Mat& noise_image, const int kernel_size, const double variance) {
-    std::cout << "kernel  :  " << kernel_size << "\nvariance  :  " << variance << std::endl;
+//    std::cout << "kernel  :  " << kernel_size << "\nvariance  :  " << variance << std::endl;
     // 或许直接用 .data 操作会快的多
     std::vector<cv::Mat> noise_channels;
     cv::split(noise_image, noise_channels);

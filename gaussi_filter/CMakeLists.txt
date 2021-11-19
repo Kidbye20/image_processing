@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.12)
 project(gaussi_filter)
 
 # 添加编译选项
@@ -15,10 +15,10 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/include/)
 
 # 添加可执行文件
-add_executable(gaussi_filter src/gaussi_demo.cpp src/gaussi_filter.cpp)
+add_executable(gaussi_filter src/gaussi_demo.cpp src/gaussi_filter.cpp src/faster_gaussi_filter.cpp)
 
 
-
+# 设置  opencv
 set(OpenCV_DIR "D:/environments/C++/OpenCV/opencv-4.5.2/build_no_qt/install")
 # 寻找 opencv 的库
 find_package(OpenCV REQUIRED)

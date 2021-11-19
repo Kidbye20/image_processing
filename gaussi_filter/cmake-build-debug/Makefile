@@ -141,6 +141,33 @@ gaussi_filter/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\gaussi_filter.dir\build.make CMakeFiles/gaussi_filter.dir/build
 .PHONY : gaussi_filter/fast
 
+src/faster_gaussi_filter.obj: src/faster_gaussi_filter.cpp.obj
+
+.PHONY : src/faster_gaussi_filter.obj
+
+# target to build an object file
+src/faster_gaussi_filter.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\gaussi_filter.dir\build.make CMakeFiles/gaussi_filter.dir/src/faster_gaussi_filter.cpp.obj
+.PHONY : src/faster_gaussi_filter.cpp.obj
+
+src/faster_gaussi_filter.i: src/faster_gaussi_filter.cpp.i
+
+.PHONY : src/faster_gaussi_filter.i
+
+# target to preprocess a source file
+src/faster_gaussi_filter.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\gaussi_filter.dir\build.make CMakeFiles/gaussi_filter.dir/src/faster_gaussi_filter.cpp.i
+.PHONY : src/faster_gaussi_filter.cpp.i
+
+src/faster_gaussi_filter.s: src/faster_gaussi_filter.cpp.s
+
+.PHONY : src/faster_gaussi_filter.s
+
+# target to generate assembly for a file
+src/faster_gaussi_filter.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\gaussi_filter.dir\build.make CMakeFiles/gaussi_filter.dir/src/faster_gaussi_filter.cpp.s
+.PHONY : src/faster_gaussi_filter.cpp.s
+
 src/gaussi_demo.obj: src/gaussi_demo.cpp.obj
 
 .PHONY : src/gaussi_demo.obj
@@ -204,6 +231,9 @@ help:
 	@echo ... edit_cache
 	@echo ... rebuild_cache
 	@echo ... gaussi_filter
+	@echo ... src/faster_gaussi_filter.obj
+	@echo ... src/faster_gaussi_filter.i
+	@echo ... src/faster_gaussi_filter.s
 	@echo ... src/gaussi_demo.obj
 	@echo ... src/gaussi_demo.i
 	@echo ... src/gaussi_demo.s

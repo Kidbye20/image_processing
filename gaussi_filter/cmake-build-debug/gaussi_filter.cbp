@@ -84,6 +84,9 @@
 				</MakeCommands>
 			</Target>
 		</Build>
+		<Unit filename="D:/work/crane/algorithm/image_processing/gaussi_filter/src/faster_gaussi_filter.cpp">
+			<Option target="gaussi_filter"/>
+		</Unit>
 		<Unit filename="D:/work/crane/algorithm/image_processing/gaussi_filter/src/gaussi_demo.cpp">
 			<Option target="gaussi_filter"/>
 		</Unit>

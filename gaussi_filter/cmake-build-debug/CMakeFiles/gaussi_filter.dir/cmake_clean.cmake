@@ -1,4 +1,5 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/gaussi_filter.dir/src/faster_gaussi_filter.cpp.obj"
   "CMakeFiles/gaussi_filter.dir/src/gaussi_demo.cpp.obj"
   "CMakeFiles/gaussi_filter.dir/src/gaussi_filter.cpp.obj"
   "bin/gaussi_filter.exe"
