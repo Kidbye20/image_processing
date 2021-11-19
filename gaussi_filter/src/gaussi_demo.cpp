@@ -1,0 +1,90 @@
+//C++
+#include <cmath>
+#include <chrono>
+#include <vector>
+#include <iostream>
+// self
+#include "gaussi_filter.h"
+
+
+namespace {
+    void run(const std::function<void()>& work=[]{}, const std::string message="") {
+        auto start = std::chrono::steady_clock::now();
+        work();
+        auto finish = std::chrono::steady_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(finish - start);
+        std::cout << message << " " << duration.count() << " ms" <<  std::endl;
+    }
+
+    void cv_info(const cv::Mat& one_image) {
+        std::cout << "高  :  " << one_image.rows << "\n宽  :  " << one_image.cols << "\n通道 :  " << one_image.channels() << std::endl;
+        std::cout << "步长 :  " << one_image.step << std::endl;
+        // 864 = 3 * 288
+    }
+
+    void cv_show(const cv::Mat& one_image, const char* info="") {
+        cv::imshow(info, one_image);
+        cv::waitKey(0);
+        cv::destroyAllWindows();
+    }
+
+    cv::Mat cv_resize(cv::Mat& one_image, const int height, const int width, const int _interpolation=cv::INTER_LINEAR) {
+		cv::Mat result;
+		cv::resize(one_image, result, cv::Size(width, height), 0, 0, _interpolation);
+		return result;
+	}
+
+	cv::Mat cv_concat(const cv::Mat& lhs, const cv::Mat& rhs) {
+        cv::Mat result;
+        cv::hconcat(std::vector<cv::Mat>({lhs, rhs}), result);
+        return result;
+    }
+}
+
+
+void test_bgr_image(const cv::Mat& noise_image) {
+    // 展示图像信息
+    cv_info(noise_image);
+    // 准备高斯滤波的参数, 滤波核大小与方差
+    const int kernel_size = 11;
+    const double variance = 3;
+    // self
+    cv::Mat gaussi_result;
+    run([&noise_image, &gaussi_result, kernel_size, variance]{
+        gaussi_result = gaussi_filter(noise_image, kernel_size, variance);
+    }, "My      :  ");
+    cv_show(cv_concat(noise_image, gaussi_result));
+    // OpenCV
+    run([&noise_image, &gaussi_result, kernel_size, variance]{
+        GaussianBlur(noise_image, gaussi_result, cv::Size(kernel_size, kernel_size), variance, variance);;
+    }, "OpenCV  :  ");
+    // 并排展示去噪结果
+    cv_show(cv_concat(noise_image, gaussi_result));
+}
+
+void test_gray_image(const cv::Mat& noise_image) {
+    cv::Mat gray_noise_image;
+    cv::cvtColor(noise_image, gray_noise_image, cv::COLOR_BGR2GRAY);
+    run([&](){
+        const auto gray_denoised_image = gaussi_filter_channel(gray_noise_image, 11, 3);
+    });
+    run([&](){
+        cv::Mat gray_denoised_image;
+        cv::GaussianBlur(gray_noise_image, gray_denoised_image, cv::Size(11, 11), 3, 3);
+    });
+    // cv_show(cv_concat(gray_noise_image, gray_denoised_image));
+}
+
+int main() {
+    std::cout << "opencv  :  " << CV_VERSION << std::endl;
+    // 根据图片路径读取图像
+    const char* noise_path = "./images/input/Kodak24/22.png";
+    const auto noise_image = cv::imread(noise_path);
+    if(noise_image.empty()) {
+        std::cout << "读取图片  " << noise_path << "  失败 !" << std::endl;
+        return 0;
+    }
+    // test_bgr_image(noise_image);
+    test_gray_image(noise_image);
+    return 0;
+}

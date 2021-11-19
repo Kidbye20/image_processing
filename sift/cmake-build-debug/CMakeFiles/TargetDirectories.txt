@@ -1,0 +1,3 @@
+D:/work/crane/algorithm/image_processing/sift/cmake-build-debug/CMakeFiles/sift.dir
+D:/work/crane/algorithm/image_processing/sift/cmake-build-debug/CMakeFiles/edit_cache.dir
+D:/work/crane/algorithm/image_processing/sift/cmake-build-debug/CMakeFiles/rebuild_cache.dir
