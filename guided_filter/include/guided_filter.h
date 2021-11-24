@@ -8,6 +8,6 @@
 
 
 
-cv::Mat guided_filter(const cv::Mat& noise_image, const cv::Mat& guided_image, const int radius=3, const double eta=0.01);
+cv::Mat guided_filter_channel(const cv::Mat& noise_image, const cv::Mat& guided_image, const int radius=3, const double eta=0.01);
 
 #endif //GAUSSI_FILTER_GUIDED_FILTER_H

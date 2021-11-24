@@ -59,7 +59,7 @@ int main() {
     }
     cv::cvtColor(noise_image, noise_image, cv::COLOR_BGR2GRAY);
     auto& guided_image = noise_image;
-    const auto guided_result = guided_filter(noise_image, guided_image);
+    const auto guided_result = guided_filter_channel(noise_image, guided_image);
     cv_show(cv_concat({noise_image, guided_result}));
     return 0;
 }
