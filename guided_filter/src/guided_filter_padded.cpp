@@ -1,5 +1,6 @@
 // C++
 #include <vector>
+#include <iostream>
 // self
 #include "guided_filter.h"
 
@@ -106,10 +107,19 @@ namespace {
 }
 
 // 我可以先把它 padding, 之后在 Rect
-cv::Mat guided_filter_channel_padded(const cv::Mat& noise_image, const cv::Mat& guide_image, const int radius_h, const int radius_w, const double eta) {
+cv::Mat guided_filter_channel_padded(const cv::Mat& noise_image, const cv::Mat& guide_image, const int radius_h, const int radius_w, const double epsilon) {
+    const int C = noise_image.channels();
+    if(C != 1) {
+        std::cout << "channels must be 1 !\n";
+        return noise_image;
+    }
     const int H = noise_image.rows;
 	const int W = noise_image.cols;
 	const int length = H * W;
+	if(H != guide_image.rows or W != guide_image.cols) {
+	    std::cout << "the size of guide image should be the same as input image\n";
+	    return noise_image;
+	}
 	// 准备一些 double 数组存储中间结果
 	std::vector<double> noise_double_image(H * W, 0);
 	std::vector<double> guide_double_image(H * W, 0);
@@ -136,8 +146,8 @@ cv::Mat guided_filter_channel_padded(const cv::Mat& noise_image, const cv::Mat& 
 	// 准备求 a 的分子 cov_IP  跟分母 var_I
 	for(int i = 0;i < length; ++i) cov_IP[i] = mean_IP[i] - mean_I[i] * mean_P[i];
 	for(int i = 0;i < length; ++i) var_I[i] = mean_II[i] - mean_I[i] * mean_I[i];
-	// a = cov(I, P) / (var(I) + eta)
-	for(int i = 0;i < length; ++i) a[i] = cov_IP[i] / (var_I[i] + eta);
+	// a = cov(I, P) / (var(I) + epsilon)
+	for(int i = 0;i < length; ++i) a[i] = cov_IP[i] / (var_I[i] + epsilon);
 	// b = mean(P) - a * mean(I)
 	for(int i = 0;i < length; ++i) b[i] = mean_P[i] - a[i] * mean_I[i];
 	// mean(a) 和 mean(b), 因为一个 q 点可能存在于多个窗口内, 多个窗口内都有 q 的一个值

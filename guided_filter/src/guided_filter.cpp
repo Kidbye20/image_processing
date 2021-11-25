@@ -77,7 +77,7 @@ namespace {
 }
 
 // 我可以先把它 padding, 之后在 Rect
-cv::Mat guided_filter_channel(const cv::Mat& noise_image, const cv::Mat& guided_image, const int radius, const double eta) {
+cv::Mat guided_filter_channel(const cv::Mat& noise_image, const cv::Mat& guided_image, const int radius, const double epsilon) {
 	const int H = noise_image.rows;
 	const int W = noise_image.cols;
 	const int length = H * W;
@@ -107,8 +107,8 @@ cv::Mat guided_filter_channel(const cv::Mat& noise_image, const cv::Mat& guided_
 	// 准备求 a 的分子 cov_IP  跟分母 var_I
 	for(int i = 0;i < length; ++i) cov_IP[i] = mean_IP[i] - mean_I[i] * mean_P[i];
 	for(int i = 0;i < length; ++i) var_I[i] = mean_II[i] - mean_I[i] * mean_I[i];
-	// a = cov(I, P) / (var(I) + eta)
-	for(int i = 0;i < length; ++i) a[i] = cov_IP[i] / (var_I[i] + eta);
+	// a = cov(I, P) / (var(I) + epsilon)
+	for(int i = 0;i < length; ++i) a[i] = cov_IP[i] / (var_I[i] + epsilon);
 	// b = mean(P) - a * mean(I)
 	for(int i = 0;i < length; ++i) b[i] = mean_P[i] - a[i] * mean_I[i];
 	// mean(a) 和 mean(b), 因为一个 q 点可能存在于多个窗口内, 多个窗口内都有 q 的一个值
@@ -205,7 +205,7 @@ namespace {
 }
 
 
-cv::Mat guided_filter(const cv::Mat& noise_image, const cv::Mat& guided_image, const int radius, const double eta) {
+cv::Mat guided_filter(const cv::Mat& noise_image, const cv::Mat& guided_image, const int radius, const double epsilon) {
 //    ------------【0】转换源图像信息，将输入扩展为64位浮点型，以便以后做乘法------------
 	cv::Mat srcMat, guidedMat;
 	noise_image.convertTo(srcMat, CV_64FC1, 1.0 / 255);
@@ -228,7 +228,7 @@ cv::Mat guided_filter(const cv::Mat& noise_image, const cv::Mat& guided_image, c
 	cov_Ip = mean_Ip - mean_I.mul(mean_p);
 	cv::Mat var_I = mean_II - mean_I.mul(mean_I);
 	//---------------【3】计算参数系数a、b-------------------
-	cv::Mat a = cov_Ip / (var_I + eta);
+	cv::Mat a = cov_Ip / (var_I + epsilon);
 	cv::Mat b = mean_p - a.mul(mean_I);
 	//--------------【4】计算系数a、b的均值-----------------
 	const auto mean_a = get_image_window_mean(a, radius);
