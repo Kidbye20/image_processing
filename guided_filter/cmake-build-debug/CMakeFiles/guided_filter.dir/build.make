@@ -89,24 +89,10 @@ CMakeFiles/guided_filter.dir/src/guided_demo.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/guided_filter.dir/src/guided_demo.cpp.s"
 	D:\environments\C++\MinGW_posix_sjlj\mingw64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S D:\work\crane\algorithm\image_processing\guided_filter\src\guided_demo.cpp -o CMakeFiles\guided_filter.dir\src\guided_demo.cpp.s
 
-CMakeFiles/guided_filter.dir/src/guided_filter.cpp.obj: CMakeFiles/guided_filter.dir/flags.make
-CMakeFiles/guided_filter.dir/src/guided_filter.cpp.obj: CMakeFiles/guided_filter.dir/includes_CXX.rsp
-CMakeFiles/guided_filter.dir/src/guided_filter.cpp.obj: ../src/guided_filter.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=D:\work\crane\algorithm\image_processing\guided_filter\cmake-build-debug\CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/guided_filter.dir/src/guided_filter.cpp.obj"
-	D:\environments\C++\MinGW_posix_sjlj\mingw64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles\guided_filter.dir\src\guided_filter.cpp.obj -c D:\work\crane\algorithm\image_processing\guided_filter\src\guided_filter.cpp
-
-CMakeFiles/guided_filter.dir/src/guided_filter.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/guided_filter.dir/src/guided_filter.cpp.i"
-	D:\environments\C++\MinGW_posix_sjlj\mingw64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E D:\work\crane\algorithm\image_processing\guided_filter\src\guided_filter.cpp > CMakeFiles\guided_filter.dir\src\guided_filter.cpp.i
-
-CMakeFiles/guided_filter.dir/src/guided_filter.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/guided_filter.dir/src/guided_filter.cpp.s"
-	D:\environments\C++\MinGW_posix_sjlj\mingw64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S D:\work\crane\algorithm\image_processing\guided_filter\src\guided_filter.cpp -o CMakeFiles\guided_filter.dir\src\guided_filter.cpp.s
-
 CMakeFiles/guided_filter.dir/src/guided_filter_padded.cpp.obj: CMakeFiles/guided_filter.dir/flags.make
 CMakeFiles/guided_filter.dir/src/guided_filter_padded.cpp.obj: CMakeFiles/guided_filter.dir/includes_CXX.rsp
 CMakeFiles/guided_filter.dir/src/guided_filter_padded.cpp.obj: ../src/guided_filter_padded.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=D:\work\crane\algorithm\image_processing\guided_filter\cmake-build-debug\CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/guided_filter.dir/src/guided_filter_padded.cpp.obj"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=D:\work\crane\algorithm\image_processing\guided_filter\cmake-build-debug\CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/guided_filter.dir/src/guided_filter_padded.cpp.obj"
 	D:\environments\C++\MinGW_posix_sjlj\mingw64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles\guided_filter.dir\src\guided_filter_padded.cpp.obj -c D:\work\crane\algorithm\image_processing\guided_filter\src\guided_filter_padded.cpp
 
 CMakeFiles/guided_filter.dir/src/guided_filter_padded.cpp.i: cmake_force
@@ -117,18 +103,32 @@ CMakeFiles/guided_filter.dir/src/guided_filter_padded.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/guided_filter.dir/src/guided_filter_padded.cpp.s"
 	D:\environments\C++\MinGW_posix_sjlj\mingw64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S D:\work\crane\algorithm\image_processing\guided_filter\src\guided_filter_padded.cpp -o CMakeFiles\guided_filter.dir\src\guided_filter_padded.cpp.s
 
+CMakeFiles/guided_filter.dir/src/bilateral_filter.cpp.obj: CMakeFiles/guided_filter.dir/flags.make
+CMakeFiles/guided_filter.dir/src/bilateral_filter.cpp.obj: CMakeFiles/guided_filter.dir/includes_CXX.rsp
+CMakeFiles/guided_filter.dir/src/bilateral_filter.cpp.obj: ../src/bilateral_filter.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=D:\work\crane\algorithm\image_processing\guided_filter\cmake-build-debug\CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/guided_filter.dir/src/bilateral_filter.cpp.obj"
+	D:\environments\C++\MinGW_posix_sjlj\mingw64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles\guided_filter.dir\src\bilateral_filter.cpp.obj -c D:\work\crane\algorithm\image_processing\guided_filter\src\bilateral_filter.cpp
+
+CMakeFiles/guided_filter.dir/src/bilateral_filter.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/guided_filter.dir/src/bilateral_filter.cpp.i"
+	D:\environments\C++\MinGW_posix_sjlj\mingw64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E D:\work\crane\algorithm\image_processing\guided_filter\src\bilateral_filter.cpp > CMakeFiles\guided_filter.dir\src\bilateral_filter.cpp.i
+
+CMakeFiles/guided_filter.dir/src/bilateral_filter.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/guided_filter.dir/src/bilateral_filter.cpp.s"
+	D:\environments\C++\MinGW_posix_sjlj\mingw64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S D:\work\crane\algorithm\image_processing\guided_filter\src\bilateral_filter.cpp -o CMakeFiles\guided_filter.dir\src\bilateral_filter.cpp.s
+
 # Object files for target guided_filter
 guided_filter_OBJECTS = \
 "CMakeFiles/guided_filter.dir/src/guided_demo.cpp.obj" \
-"CMakeFiles/guided_filter.dir/src/guided_filter.cpp.obj" \
-"CMakeFiles/guided_filter.dir/src/guided_filter_padded.cpp.obj"
+"CMakeFiles/guided_filter.dir/src/guided_filter_padded.cpp.obj" \
+"CMakeFiles/guided_filter.dir/src/bilateral_filter.cpp.obj"
 
 # External object files for target guided_filter
 guided_filter_EXTERNAL_OBJECTS =
 
 bin/guided_filter.exe: CMakeFiles/guided_filter.dir/src/guided_demo.cpp.obj
-bin/guided_filter.exe: CMakeFiles/guided_filter.dir/src/guided_filter.cpp.obj
 bin/guided_filter.exe: CMakeFiles/guided_filter.dir/src/guided_filter_padded.cpp.obj
+bin/guided_filter.exe: CMakeFiles/guided_filter.dir/src/bilateral_filter.cpp.obj
 bin/guided_filter.exe: CMakeFiles/guided_filter.dir/build.make
 bin/guided_filter.exe: D:/environments/C++/OpenCV/opencv-4.5.2/build_no_qt/install/x64/mingw/lib/libopencv_gapi452.dll.a
 bin/guided_filter.exe: D:/environments/C++/OpenCV/opencv-4.5.2/build_no_qt/install/x64/mingw/lib/libopencv_stitching452.dll.a

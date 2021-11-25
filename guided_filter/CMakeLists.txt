@@ -15,7 +15,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/include/)
 
 # 添加可执行文件
-add_executable(guided_filter src/guided_demo.cpp src/guided_filter.cpp src/guided_filter_padded.cpp)
+add_executable(guided_filter src/guided_demo.cpp src/guided_filter_padded.cpp src/bilateral_filter.cpp)
 
 
 # 设置  opencv

@@ -87,6 +87,10 @@ O_i = \sum_{k:\,i\in w_k}{(a_k \cdot G_i + b_k)}
 $$
 实际求解时，整幅图像同时求解，最后对 $a_k$ 和 $b_k$ 的所有点组成的图像做一次**均值滤波**即可。
 
+**算法流程**
+
+<img src="images/markdown/process.png" style="zoom:50%;" />
+
 
 
 ## 复杂度分析
@@ -153,6 +157,20 @@ $$
 
 
 
+
+
+
+
+# 存在的问题
+
+1. 灰度图以彩色图为参考图进行引导滤波，这个我还不懂为什么
+2. 引导滤波我是不是写错了，感觉之前用 cv::boxfilter 的更亮，我现在的代码导致 flash 失败了，我还没找到原因。
+3. 还有很多细节，在原论文中，我还是去看下原论文比较好，坑爹
+
+
+
+
+
 # 去噪实验
 
 首先说下，为什么引导滤波可以去噪，我们在前面推导得到的
@@ -202,6 +220,24 @@ $$
    这里有一个变量控制 $a_k$ 的取值，随着 $\epsilon\uparrow$ 增大，$a_k \downarrow$ 减小，$b_k \uparrow$ 增大，也就是说越接近于 $I$ 在 $w_k$ 窗口内的均值滤波，平滑越明显。
 
    ![](images/output/comparison_rgb_epsilon.png)
+
+
+
+
+
+# 细节增强实验
+
+从左到右分别是：原图 <------> guided filter  <------> bilateral filter
+
+这就是所谓的边缘伪影和梯度反转现象。。。。我之前一直以为是平滑去噪会出现梯度反转，看来还是得看原论文才行。
+
+![](images/output/comparison_detail_enhancement.png)
+
+
+
+
+
+
 
 
 

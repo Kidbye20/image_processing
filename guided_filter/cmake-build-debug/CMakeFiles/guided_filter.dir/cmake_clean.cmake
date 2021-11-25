@@ -1,6 +1,6 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/guided_filter.dir/src/bilateral_filter.cpp.obj"
   "CMakeFiles/guided_filter.dir/src/guided_demo.cpp.obj"
-  "CMakeFiles/guided_filter.dir/src/guided_filter.cpp.obj"
   "CMakeFiles/guided_filter.dir/src/guided_filter_padded.cpp.obj"
   "bin/guided_filter.exe"
   "bin/guided_filter.exe.manifest"

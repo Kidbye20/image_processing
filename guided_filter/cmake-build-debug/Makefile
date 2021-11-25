@@ -141,6 +141,33 @@ guided_filter/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\guided_filter.dir\build.make CMakeFiles/guided_filter.dir/build
 .PHONY : guided_filter/fast
 
+src/bilateral_filter.obj: src/bilateral_filter.cpp.obj
+
+.PHONY : src/bilateral_filter.obj
+
+# target to build an object file
+src/bilateral_filter.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\guided_filter.dir\build.make CMakeFiles/guided_filter.dir/src/bilateral_filter.cpp.obj
+.PHONY : src/bilateral_filter.cpp.obj
+
+src/bilateral_filter.i: src/bilateral_filter.cpp.i
+
+.PHONY : src/bilateral_filter.i
+
+# target to preprocess a source file
+src/bilateral_filter.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\guided_filter.dir\build.make CMakeFiles/guided_filter.dir/src/bilateral_filter.cpp.i
+.PHONY : src/bilateral_filter.cpp.i
+
+src/bilateral_filter.s: src/bilateral_filter.cpp.s
+
+.PHONY : src/bilateral_filter.s
+
+# target to generate assembly for a file
+src/bilateral_filter.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\guided_filter.dir\build.make CMakeFiles/guided_filter.dir/src/bilateral_filter.cpp.s
+.PHONY : src/bilateral_filter.cpp.s
+
 src/guided_demo.obj: src/guided_demo.cpp.obj
 
 .PHONY : src/guided_demo.obj
@@ -167,33 +194,6 @@ src/guided_demo.s: src/guided_demo.cpp.s
 src/guided_demo.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\guided_filter.dir\build.make CMakeFiles/guided_filter.dir/src/guided_demo.cpp.s
 .PHONY : src/guided_demo.cpp.s
-
-src/guided_filter.obj: src/guided_filter.cpp.obj
-
-.PHONY : src/guided_filter.obj
-
-# target to build an object file
-src/guided_filter.cpp.obj:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\guided_filter.dir\build.make CMakeFiles/guided_filter.dir/src/guided_filter.cpp.obj
-.PHONY : src/guided_filter.cpp.obj
-
-src/guided_filter.i: src/guided_filter.cpp.i
-
-.PHONY : src/guided_filter.i
-
-# target to preprocess a source file
-src/guided_filter.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\guided_filter.dir\build.make CMakeFiles/guided_filter.dir/src/guided_filter.cpp.i
-.PHONY : src/guided_filter.cpp.i
-
-src/guided_filter.s: src/guided_filter.cpp.s
-
-.PHONY : src/guided_filter.s
-
-# target to generate assembly for a file
-src/guided_filter.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\guided_filter.dir\build.make CMakeFiles/guided_filter.dir/src/guided_filter.cpp.s
-.PHONY : src/guided_filter.cpp.s
 
 src/guided_filter_padded.obj: src/guided_filter_padded.cpp.obj
 
@@ -231,12 +231,12 @@ help:
 	@echo ... edit_cache
 	@echo ... rebuild_cache
 	@echo ... guided_filter
+	@echo ... src/bilateral_filter.obj
+	@echo ... src/bilateral_filter.i
+	@echo ... src/bilateral_filter.s
 	@echo ... src/guided_demo.obj
 	@echo ... src/guided_demo.i
 	@echo ... src/guided_demo.s
-	@echo ... src/guided_filter.obj
-	@echo ... src/guided_filter.i
-	@echo ... src/guided_filter.s
 	@echo ... src/guided_filter_padded.obj
 	@echo ... src/guided_filter_padded.i
 	@echo ... src/guided_filter_padded.s

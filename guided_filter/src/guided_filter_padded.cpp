@@ -13,12 +13,6 @@ namespace {
 		cv::destroyAllWindows();
 	}
 
-	cv::Mat make_pad(const cv::Mat& one_image, const int pad_H, const int pad_W) {
-		cv::Mat padded_image;
-		cv::copyMakeBorder(one_image, padded_image, pad_H, pad_H, pad_W, pad_W, cv::BORDER_REPLICATE);
-		return padded_image;
-	}
-
 	void cv_show_double(const double* const one_image, const int H, const int W, const char* info="") {
 		cv::Mat src(H, W,CV_8UC1);
 		for(int i = 0;i < H; ++i) {
@@ -159,4 +153,73 @@ cv::Mat guided_filter_channel_padded(const cv::Mat& noise_image, const cv::Mat& 
 	// 截取
 	return q;
 }
+
+
+
+
+cv::Mat guided_filter_with_color(const cv::Mat& noise_image, const cv::Mat& guide_image, const int radius_h, const int radius_w, const double epsilon) {
+    const int H = noise_image.rows;
+    const int W = noise_image.cols;
+    // -------- 【1】把引导图分离
+    std::vector<cv::Mat> guide_bgr_images;
+    cv::split(guide_image, guide_bgr_images);
+    const uchar* const guide_B_ptr = guide_bgr_images[0].data;
+    const uchar* const guide_G_ptr = guide_bgr_images[1].data;
+    const uchar* const guide_R_ptr = guide_bgr_images[2].data;
+    // -------- 【2】将输入图片和引导图都除以 255
+	const int length = H * W;
+	std::vector<double> noise_double_image(length, 0.0);
+	std::vector<double> guide_double_image_B(length, 0.0), guide_double_image_G(length, 0.0), guide_double_image_R(length, 0.0);
+	for(int i = 0;i < length; ++i) noise_double_image[i] = (double)noise_image.data[i] / 255;
+	for(int i = 0;i < length; ++i) guide_double_image_B[i] = (double)guide_B_ptr[i] / 255;
+	for(int i = 0;i < length; ++i) guide_double_image_G[i] = (double)guide_G_ptr[i] / 255;
+	for(int i = 0;i < length; ++i) guide_double_image_R[i] = (double)guide_R_ptr[i] / 255;
+    // -------- 【3】计算均值
+    const auto mean_P = box_filter(noise_double_image.data(), radius_h, radius_w, H, W);
+    const auto mean_I_B = box_filter(guide_double_image_B.data(), radius_h, radius_w, H, W);
+    const auto mean_I_G = box_filter(guide_double_image_G.data(), radius_h, radius_w, H, W);
+    const auto mean_I_R = box_filter(guide_double_image_R.data(), radius_h, radius_w, H, W);
+    std::vector<double> IB_P(length, 0.0), IG_P(length, 0.0), IR_P(length, 0.0);
+    for(int i = 0;i < length; ++i) IB_P[i] = guide_double_image_B[i] * noise_double_image[i];
+    for(int i = 0;i < length; ++i) IG_P[i] = guide_double_image_G[i] * noise_double_image[i];
+    for(int i = 0;i < length; ++i) IR_P[i] = guide_double_image_R[i] * noise_double_image[i];
+    const auto mean_IB_P = box_filter(IB_P.data(), radius_h, radius_w, H, W);
+    const auto mean_IG_P = box_filter(IG_P.data(), radius_h, radius_w, H, W);
+    const auto mean_IR_P = box_filter(IR_P.data(), radius_h, radius_w, H, W);
+    // -------- 【3】计算协方差
+    std::vector<double> cov_IB_P(length, 0.0), cov_IG_P(length, 0.0), cov_IR_P(length, 0.0);
+    for(int i = 0;i < length; ++i) cov_IB_P[i] = mean_IB_P[i] - mean_I_B[i] * mean_P[i];
+    for(int i = 0;i < length; ++i) cov_IG_P[i] = mean_IG_P[i] - mean_I_G[i] * mean_P[i];
+    for(int i = 0;i < length; ++i) cov_IR_P[i] = mean_IR_P[i] - mean_I_R[i] * mean_P[i];
+    // -------- 【3】计算 I 三个通道的各种方差
+    std::vector<double> I_BB(length, 0.0), I_BG(length, 0.0), I_BR(length, 0.0);
+    std::vector<double> I_GG(length, 0.0), I_GR(length, 0.0), I_RR(length, 0.0);
+    for(int i = 0;i < length; ++i) I_BB[i] = guide_double_image_B[i] * guide_double_image_B[i];
+    for(int i = 0;i < length; ++i) I_BG[i] = guide_double_image_B[i] * guide_double_image_G[i];
+    for(int i = 0;i < length; ++i) I_BR[i] = guide_double_image_B[i] * guide_double_image_R[i];
+    for(int i = 0;i < length; ++i) I_GG[i] = guide_double_image_G[i] * guide_double_image_G[i];
+    for(int i = 0;i < length; ++i) I_GR[i] = guide_double_image_G[i] * guide_double_image_R[i];
+    for(int i = 0;i < length; ++i) I_RR[i] = guide_double_image_R[i] * guide_double_image_R[i];
+    // 先计算 I_BB的 mean, 然后还要继续计算
+    return noise_image;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
