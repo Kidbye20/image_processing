@@ -195,6 +195,33 @@ src/guided_filter.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\guided_filter.dir\build.make CMakeFiles/guided_filter.dir/src/guided_filter.cpp.s
 .PHONY : src/guided_filter.cpp.s
 
+src/guided_filter_padded.obj: src/guided_filter_padded.cpp.obj
+
+.PHONY : src/guided_filter_padded.obj
+
+# target to build an object file
+src/guided_filter_padded.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\guided_filter.dir\build.make CMakeFiles/guided_filter.dir/src/guided_filter_padded.cpp.obj
+.PHONY : src/guided_filter_padded.cpp.obj
+
+src/guided_filter_padded.i: src/guided_filter_padded.cpp.i
+
+.PHONY : src/guided_filter_padded.i
+
+# target to preprocess a source file
+src/guided_filter_padded.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\guided_filter.dir\build.make CMakeFiles/guided_filter.dir/src/guided_filter_padded.cpp.i
+.PHONY : src/guided_filter_padded.cpp.i
+
+src/guided_filter_padded.s: src/guided_filter_padded.cpp.s
+
+.PHONY : src/guided_filter_padded.s
+
+# target to generate assembly for a file
+src/guided_filter_padded.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\guided_filter.dir\build.make CMakeFiles/guided_filter.dir/src/guided_filter_padded.cpp.s
+.PHONY : src/guided_filter_padded.cpp.s
+
 # Help Target
 help:
 	@echo The following are some of the valid targets for this Makefile:
@@ -210,6 +237,9 @@ help:
 	@echo ... src/guided_filter.obj
 	@echo ... src/guided_filter.i
 	@echo ... src/guided_filter.s
+	@echo ... src/guided_filter_padded.obj
+	@echo ... src/guided_filter_padded.i
+	@echo ... src/guided_filter_padded.s
 .PHONY : help
 
 

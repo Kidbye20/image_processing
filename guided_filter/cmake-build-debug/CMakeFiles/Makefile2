@@ -92,12 +92,12 @@ clean: CMakeFiles/guided_filter.dir/clean
 CMakeFiles/guided_filter.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\guided_filter.dir\build.make CMakeFiles/guided_filter.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\guided_filter.dir\build.make CMakeFiles/guided_filter.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=D:\work\crane\algorithm\image_processing\guided_filter\cmake-build-debug\CMakeFiles --progress-num=1,2,3 "Built target guided_filter"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=D:\work\crane\algorithm\image_processing\guided_filter\cmake-build-debug\CMakeFiles --progress-num=1,2,3,4 "Built target guided_filter"
 .PHONY : CMakeFiles/guided_filter.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/guided_filter.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start D:\work\crane\algorithm\image_processing\guided_filter\cmake-build-debug\CMakeFiles 3
+	$(CMAKE_COMMAND) -E cmake_progress_start D:\work\crane\algorithm\image_processing\guided_filter\cmake-build-debug\CMakeFiles 4
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 CMakeFiles/guided_filter.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start D:\work\crane\algorithm\image_processing\guided_filter\cmake-build-debug\CMakeFiles 0
 .PHONY : CMakeFiles/guided_filter.dir/rule

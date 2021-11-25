@@ -47,19 +47,29 @@ namespace {
 }
 
 
-
-int main() {
-    std::cout << "opencv  :  " << CV_VERSION << std::endl;
+void denoise_gray_demo() {
     // 根据图片路径读取图像
     const char* noise_path = "../images/denoise/Kodak24/18.png";
     auto noise_image = cv::imread(noise_path);
     if(noise_image.empty()) {
         std::cout << "读取图片  " << noise_path << "  失败 !" << std::endl;
-        return 0;
+        return;
     }
     cv::cvtColor(noise_image, noise_image, cv::COLOR_BGR2GRAY);
     auto& guided_image = noise_image;
-    const auto guided_result = guided_filter_channel(noise_image, guided_image);
-    cv_show(cv_concat({noise_image, guided_result}));
+    const auto guided_result = guided_filter_channel_padded(noise_image, guided_image);
+
+    const auto comparison_results = cv_concat({noise_image, guided_result});
+    cv_show(comparison_results);
+    // 保存结果
+    const std::string save_path("./results/comparison.png");
+    cv::imwrite(save_path, comparison_results, std::vector<int>({cv::IMWRITE_PNG_COMPRESSION, 0}));
+}
+
+
+
+int main() {
+    std::cout << "opencv  :  " << CV_VERSION << std::endl;
+    denoise_gray_demo();
     return 0;
 }

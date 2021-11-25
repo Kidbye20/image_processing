@@ -90,6 +90,9 @@
 		<Unit filename="D:/work/crane/algorithm/image_processing/guided_filter/src/guided_filter.cpp">
 			<Option target="guided_filter"/>
 		</Unit>
+		<Unit filename="D:/work/crane/algorithm/image_processing/guided_filter/src/guided_filter_padded.cpp">
+			<Option target="guided_filter"/>
+		</Unit>
 		<Unit filename="D:/work/crane/algorithm/image_processing/guided_filter/CMakeLists.txt">
 			<Option virtualFolder="CMake Files\"/>
 		</Unit>
