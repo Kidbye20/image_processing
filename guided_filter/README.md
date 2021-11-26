@@ -19,14 +19,14 @@ $$
 现在给定输入图像 $I$，为了让输出 $O$ 在 **局部** 内容上和 $I$ 保持大致相同，则有最优化目标
 $$
 \begin{aligned}
-E &= {\underset {a_k, b_k}{\operatorname {arg\,min} }}\,{\sum_{i\in w_k}{(O_i - I_i)}}\\
-  &= {\underset {a_k, b_k}{\operatorname {arg\,min} }}\,{\sum_{i\in w_k}{(a_k \cdot G_i + b_k - I_i)}}\\
+{\underset {}{\operatorname {min} }}\,{\sum_{i\in w_k}{(O_i - I_i)}}
+  &= {\underset {}{\operatorname {min} }}\,{\sum_{i\in w_k}{(a_k \cdot G_i + b_k - I_i)}}\\
 \end{aligned}
 $$
 为了防止除 0（后面的简化公式有），加入一个控制变量 $\epsilon$。
 $$
 \begin{aligned}
-E &=  {\underset {a_k, b_k}{\operatorname {arg\,min} }}\,{\sum_{i\in w_k}{(a_k \cdot G_i + b_k - I_i \,\,\,\, + \epsilon \cdot {a_k}^2) }} \\
+{\underset {}{\operatorname {min} }}\,{\sum_{i\in w_k}{(a_k \cdot G_i + b_k - I_i \,\,\,\, + \epsilon \cdot {a_k}^2) }} \\
 \end{aligned}
 $$
 求上式的最小值，对 $a_k$ 和 $b_k$ 求偏导
@@ -50,11 +50,11 @@ $$
 
 \sum_{i\in w_k}{({G_i}^2a_k + \epsilon\cdot a_k)} & = \sum_{i\in w_k}{\big(G_i\cdot I_i - G_i\cdot (mean(I)^{w_k} - a_k \cdot mean(G)^{w_k}) \big)} \\
 
-a_k \cdot \sum_{i\in w_k}{({G_i}^2 + \epsilon - mean(G)^{w_k} )} &= \sum_{i\in w_k}{(G_i \cdot I_i - G_i \cdot mean(I)^{w_k})} \\
+a_k \cdot \sum_{i\in w_k}{({G_i}^2 + \epsilon - G_i \cdot  mean(G)^{w_k} )} &= \sum_{i\in w_k}{(G_i \cdot I_i - G_i \cdot mean(I)^{w_k})} \\
 
-a_k \big[\sum_{i\in w_k}{{G_i}^2} + \sum_{i\in w_k}{\epsilon} - \sum_{i\in w_k}{mean(G)^{w_k}} \big] &= \sum_{i\in w_k}{(G_i \cdot I_i)} - \sum_{i\in w_k}{G_i \cdot mean(I)^{w_k}} \\
+a_k \big[\sum_{i\in w_k}{{G_i}^2} + \sum_{i\in w_k}{\epsilon} - mean(G)^{w_k} \cdot \sum_{i\in w_k}{G_i} \big] &= \sum_{i\in w_k}{(G_i \cdot I_i)} - \sum_{i\in w_k}{G_i \cdot mean(I)^{w_k}} \\
 
-a_k \big[mean({G}^2)^{w_k} + \epsilon - mean(G)^{w_k} \big] &= mean({G\cdot I})^{w_k} - mean(G)^{w_k} \cdot mean(I)^{w_k}\\ \\
+a_k \big[mean({G}^2)^{w_k} + \epsilon - mean(G)^{w_k} \cdot mean(G)^{w_k} \big] &= mean({G\cdot I})^{w_k} - mean(G)^{w_k} \cdot mean(I)^{w_k}\\ \\
 \end{aligned}
 $$
 根据期望，方差以及协方差公式
@@ -133,7 +133,7 @@ $$
 
 **Box filter**
 
-在双边滤波中，有一个操作很频繁，那就是局部区域取 $mean$ 的操作，如果按照正常的操作，时间复杂度高达 $O(M \times N \times h \times w)$，其中 $h,w$ 分别是滤波核窗口的高和宽，代价高昂。
+在引导滤波中，有一个操作很频繁，那就是局部区域取 $mean$ 的操作，如果按照正常的操作，时间复杂度高达 $O(M \times N \times h \times w)$，其中 $h,w$ 分别是滤波核窗口的高和宽，代价高昂。
 
 这种求局部区域之和的，有点像动态规划里的前缀和、区间和这种，用树状数组或者线段树什么的求解。但图像中的局部区域不是连续存储的，所以没法，得重新考虑，我一开始想到的是积分图，在 adaboosting 人脸检测中的一个
 
