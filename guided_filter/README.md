@@ -1,6 +1,6 @@
 # 原理
 
-Kaiming He 博士的经典之作，2010 ECCV paper，2014 年被 matlab 和 OpenCV 3.0 选入。
+Kaiming He 博士的经典之作，2010 ECCV paper，2014 年被 matlab 和 OpenCV 3.0 选入内置算法。
 
 据说有很多经典应用，如去噪，去雾，抠图，HDR 压缩，细节增强，联合上采样等，我的天，太牛批了。我最初知晓，它是作为三大保边平滑算法之一。
 
@@ -117,15 +117,15 @@ $$
 
 **优点**
 
-1. 时间复杂度低
-2. 功能多样，不仅仅局限于去噪平滑
-3. 和双边滤波相比，可以避免梯度反转的现象，这点暂未发现，后面记得看看到底是哪里
-
-
+1. 时间复杂度低。
+2. 功能多样，不仅仅局限于去噪平滑。
+3. 和双边滤波相比，可以避免梯度反转的现象，看后面的细节增强实验。
 
 
 
 # 实现细节
+
+代码：[我的github](https://github.com/hermosayhl/image_processing) （最近在学习图像处理基础知识，会逐渐更新，如果实现有错误，还望指正）
 
 **OpenCV**
 
@@ -161,15 +161,13 @@ $$
 4. 重复 3 直到这一行结束，到 5。
 5. 绿色区域往下走，有很多重复的黑色块，此时只需要去掉最上面的值，加上即将下面 + 1 的值，就可以更新 buffer，然后继续运行 2 - 4。
 
-可以发现，这里面没有重复计算，尽可能地利用了已经计算好的值。
+可以发现，这里面没有重复计算，尽可能地利用了已经计算好的值，根本原理就是空间换时间。
 
-根本原理就是空间换时间，把已经算过的结果存起来，避免重复计算。
+实际实现的时候，还考虑到了 padding 的问题，也就是四个顶角的局部均值计算的问题，这样可以避免四个顶角结果偏暗，具体可以看代码，看一遍就懂。
 
+**以彩色图为参考图的引导滤波**
 
-
-但我实际实现的时候，还考虑到了 padding 的问题，也就是四个顶角的局部均值计算的问题，这样可以避免四个顶角结果偏暗，具体可以看代码，看一遍就懂。
-
-
+里面有一个求矩阵的逆的过程，网上好多都是用的 OpenCV 内置的矩阵求逆。。。好慢啊，而且对数据的存储格式还有要求，和我用的 double 数据类型不同，所以我用的是 Eigen3 矩阵运算库，挺快的，而且数据存储格式简单。
 
 
 
@@ -233,23 +231,29 @@ $$
 
 从左到右分别是：原图 <------> guided filter  <------> bilateral filter
 
-这就是所谓的边缘伪影和梯度反转现象。。。。我之前一直以为是平滑去噪会出现梯度反转，看来还是得看原论文才行。
+这就是所谓的边缘伪影和梯度反转现象。。。。我之前一直以为是平滑去噪会出现梯度反转，原来是细节增强，看来还是得看原论文才行。
 
-![](images/output/comparison_detail_enhancement.png)
+![原图 <------> guided filter  <------> bilateral filter](images/output/comparison_detail_enhancement.png)
 
+<img src="images/markdown/comparison_detail_enhancement_crop.png" style="zoom:500%;" />
 
+梯度反转。。。why ?
+
+引导滤波的滤波输出在局部区域内和引导图像梯度是一致的，所以加减操作，梯度不变。但双边滤波不保证这一点。
 
 
 
 # 抠图实验
 
-从左到右分别是 mask  <------>  彩色指导图（被我 gray 了） <------>  彩色图做指导的滤波结果  <------>  灰度图做指导的滤波结果
+从左到右分别是 mask  <------>  彩色指导图（被我 gray 了，实际是彩色） <------>  彩色图做指导的滤波结果  <------>  灰度图做指导的滤波结果
 
 ![](images/output/comparison_matting.png)
 
 ![](images/output/comparison_matting_bird.png)
 
-这个鸵鸟的跟论文结果不太一样
+这个鸵鸟的跟论文结果不太一样，图片我从 pdf 上截取的。而且用灰度图做引导滤波的结果有点怪，也可能是我做错了。
+
+叹为观止，我是第一次接触抠图的东西，之前看网上的扣头发丝，我觉得好离谱，比过拟合还离谱，结果做到这里，发现还是我 too young，先求一个粗糙的分割结果，然后用原图做一遍引导滤波，
 
 
 
@@ -267,7 +271,7 @@ $$
 
 1. He, Kaiming, Jian Sun, and Xiaoou Tang. "Guided image filtering." *IEEE transactions on pattern analysis and machine intelligence* 35.6 (2012): 1397-1409.
 2. 原理参考  https://blog.csdn.net/weixin_43194305/article/details/88959183
-3. 代码参考 box filter https://www.cnblogs.com/lwl2015/p/4460711.html
+3. box filter 代码参考  https://www.cnblogs.com/lwl2015/p/4460711.html
 4. 积分图实现  https://blog.csdn.net/weixin_40647819/article/details/89740234
-5. 以彩色图为指导 https://blog.csdn.net/weixin_40647819/article/details/89763505
+5. 以彩色图指导代码参考 https://blog.csdn.net/weixin_40647819/article/details/89763505
 
