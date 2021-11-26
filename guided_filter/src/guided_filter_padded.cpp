@@ -1,6 +1,9 @@
 // C++
 #include <vector>
 #include <iostream>
+// 3rd party
+#include <Eigen/Core>
+#include <Eigen/Dense>
 // self
 #include "guided_filter.h"
 
@@ -101,7 +104,7 @@ namespace {
 }
 
 // 我可以先把它 padding, 之后在 Rect
-cv::Mat guided_filter_channel_padded(const cv::Mat& noise_image, const cv::Mat& guide_image, const int radius_h, const int radius_w, const double epsilon) {
+cv::Mat guided_filter_with_gray(const cv::Mat& noise_image, const cv::Mat& guide_image, const int radius_h, const int radius_w, const double epsilon) {
     const int C = noise_image.channels();
     if(C != 1) {
         std::cout << "channels must be 1 !\n";
@@ -149,7 +152,7 @@ cv::Mat guided_filter_channel_padded(const cv::Mat& noise_image, const cv::Mat& 
 	const auto mean_b = box_filter(b.data(), radius_h, radius_w, H, W);
 	// q = a * I + b
 	cv::Mat q = noise_image.clone();
-	for(int i = 0;i < length; ++i) q.data[i] = cv::saturate_cast<uchar>(255 * (mean_a[i] * noise_double_image[i] + mean_b[i]));
+	for(int i = 0;i < length; ++i) q.data[i] = cv::saturate_cast<uchar>(255 * (mean_a[i] * guide_double_image[i] + mean_b[i]));
 	// 截取
 	return q;
 }
@@ -200,8 +203,56 @@ cv::Mat guided_filter_with_color(const cv::Mat& noise_image, const cv::Mat& guid
     for(int i = 0;i < length; ++i) I_GG[i] = guide_double_image_G[i] * guide_double_image_G[i];
     for(int i = 0;i < length; ++i) I_GR[i] = guide_double_image_G[i] * guide_double_image_R[i];
     for(int i = 0;i < length; ++i) I_RR[i] = guide_double_image_R[i] * guide_double_image_R[i];
-    // 先计算 I_BB的 mean, 然后还要继续计算
-    return noise_image;
+    const auto mean_I_BB = box_filter(I_BB.data(), radius_h, radius_w, H, W);
+    const auto mean_I_BG = box_filter(I_BG.data(), radius_h, radius_w, H, W);
+    const auto mean_I_BR = box_filter(I_BR.data(), radius_h, radius_w, H, W);
+    const auto mean_I_GG = box_filter(I_GG.data(), radius_h, radius_w, H, W);
+    const auto mean_I_GR = box_filter(I_GR.data(), radius_h, radius_w, H, W);
+    const auto mean_I_RR = box_filter(I_RR.data(), radius_h, radius_w, H, W);
+    std::vector<double> var_I_BB(length, 0.0), var_I_BG(length, 0.0), var_I_BR(length, 0.0);
+    std::vector<double> var_I_GG(length, 0.0), var_I_GR(length, 0.0), var_I_RR(length, 0.0);
+    for(int i = 0;i < length; ++i) var_I_BB[i] = mean_I_BB[i] - mean_I_B[i] * mean_I_B[i];
+    for(int i = 0;i < length; ++i) var_I_BG[i] = mean_I_BG[i] - mean_I_B[i] * mean_I_G[i];
+    for(int i = 0;i < length; ++i) var_I_BR[i] = mean_I_BR[i] - mean_I_B[i] * mean_I_R[i];
+    for(int i = 0;i < length; ++i) var_I_GG[i] = mean_I_GG[i] - mean_I_G[i] * mean_I_G[i];
+    for(int i = 0;i < length; ++i) var_I_GR[i] = mean_I_GR[i] - mean_I_G[i] * mean_I_R[i];
+    for(int i = 0;i < length; ++i) var_I_RR[i] = mean_I_RR[i] - mean_I_R[i] * mean_I_R[i];
+    // 求解 a 和 b
+    std::vector<std::vector<double> > a(3, std::vector<double>(length, 0.0));
+    for(int i = 0;i < H; ++i) {
+        for(int j = 0;j < W; ++j) {
+            // 当前位置
+            const int p = i * W + j;
+            // 准备方差矩阵和 epsilon * eye(3)
+            Eigen::Matrix<double, 3, 3> var_matrix;
+            var_matrix << var_I_BB[p], var_I_BG[p], var_I_BR[p], var_I_BG[p], var_I_GG[p], var_I_GR[p], var_I_BR[p], var_I_GR[p], var_I_RR[p];
+            var_matrix = var_matrix + epsilon * Eigen::MatrixXd::Identity(3, 3);
+            // 求逆矩阵
+            const auto inv_var_matrix = var_matrix.inverse();
+            // 准备分子, cov_I_P
+            Eigen::Matrix<double, 1, 3> cov_I_P;
+            cov_I_P << cov_IB_P[p], cov_IG_P[p], cov_IR_P[p];
+            // 乘法得到结果
+            Eigen::Matrix<double, 1, 3> temp = cov_I_P * inv_var_matrix;
+            // 更新到三通道分别的 a
+            a[0][p] = temp(0, 0);
+            a[1][p] = temp(0, 1);
+            a[2][p] = temp(0, 2);
+        }
+    }
+    // 求 b = mean(P) - a.* mean_I
+    std::vector<double> b(length, 0.0);
+    for(int i = 0;i < length; ++i) b[i] = mean_P[i] - a[0][i] * mean_I_B[i] - a[1][i] * mean_I_G[i] - a[2][i] * mean_I_R[i];
+    // 求 mean(b) 和 mean(a)
+    const auto mean_b = box_filter(b.data(), radius_h, radius_w, H, W);
+    const auto mean_a_B = box_filter(a[0].data(), radius_h, radius_w, H, W);
+    const auto mean_a_G = box_filter(a[1].data(), radius_h, radius_w, H, W);
+    const auto mean_a_R = box_filter(a[2].data(), radius_h, radius_w, H, W);
+    // 求滤波输出 q = mean_a .* I + mean_b
+    cv::Mat q = noise_image.clone();
+	for(int i = 0;i < length; ++i)
+	    q.data[i] = cv::saturate_cast<uchar>(255 * (mean_a_B[i] * guide_double_image_B[i] + mean_a_G[i] * guide_double_image_G[i] + mean_a_R[i] * guide_double_image_R[i] + mean_b[i]));
+    return q;
 }
 
 

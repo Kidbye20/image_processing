@@ -358,7 +358,11 @@ D:/environments/C++/OpenCV/opencv-4.5.2/build_no_qt/install/include/opencv2/vide
 opencv2/core.hpp
 D:/environments/C++/OpenCV/opencv-4.5.2/build_no_qt/install/include/opencv2/opencv2/core.hpp
 
-D:/work/crane/algorithm/image_processing/guided_filter/src/guided_filter_padded.cpp
+D:/work/crane/algorithm/image_processing/guided_filter/src/guided_demo.cpp
+cmath
+-
+chrono
+-
 vector
 -
 iostream

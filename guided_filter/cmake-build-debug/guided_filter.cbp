@@ -34,6 +34,7 @@
 				<Option type="1"/>
 				<Option compiler="gcc"/>
 				<Compiler>
+					<Add directory="D:/environments/C++/3rdparty/Eigen3/eigen-3.3.9/installed/include/eigen3"/>
 					<Add directory="D:/work/crane/algorithm/image_processing/guided_filter/include"/>
 					<Add directory="D:/environments/C++/OpenCV/opencv-4.5.2/build_no_qt/install/include"/>
 					<Add directory="D:/environments/C++/MinGW_posix_sjlj/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++"/>
@@ -57,6 +58,7 @@
 				<Option type="1"/>
 				<Option compiler="gcc"/>
 				<Compiler>
+					<Add directory="D:/environments/C++/3rdparty/Eigen3/eigen-3.3.9/installed/include/eigen3"/>
 					<Add directory="D:/work/crane/algorithm/image_processing/guided_filter/include"/>
 					<Add directory="D:/environments/C++/OpenCV/opencv-4.5.2/build_no_qt/install/include"/>
 					<Add directory="D:/environments/C++/MinGW_posix_sjlj/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/8.1.0/include/c++"/>
