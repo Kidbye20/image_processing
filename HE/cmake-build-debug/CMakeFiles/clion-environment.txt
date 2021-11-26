@@ -1,0 +1,4 @@
+ToolSet: w64 6.0 (local)@D:\environments\C++\MinGW_posix_sjlj\mingw64
+Options: 
+
+Options:

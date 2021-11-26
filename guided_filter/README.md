@@ -269,4 +269,5 @@ $$
 2. 原理参考  https://blog.csdn.net/weixin_43194305/article/details/88959183
 3. 代码参考 box filter https://www.cnblogs.com/lwl2015/p/4460711.html
 4. 积分图实现  https://blog.csdn.net/weixin_40647819/article/details/89740234
+5. 以彩色图为指导 https://blog.csdn.net/weixin_40647819/article/details/89763505
 
