@@ -1,0 +1,3 @@
+D:\software\editor\CLion\bin\cmake\win\bin\cmake.exe -E rm -f CMakeFiles\non_local_means.dir/objects.a
+D:\environments\C++\MinGW_posix_sjlj\mingw64\bin\ar.exe cr CMakeFiles\non_local_means.dir/objects.a @CMakeFiles\non_local_means.dir\objects1.rsp
+D:\environments\C++\MinGW_posix_sjlj\mingw64\bin\g++.exe -std=c++14 -O1 -g -Wl,--whole-archive CMakeFiles\non_local_means.dir/objects.a -Wl,--no-whole-archive -o bin\non_local_means.exe -Wl,--out-implib,libnon_local_means.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\non_local_means.dir\linklibs.rsp
