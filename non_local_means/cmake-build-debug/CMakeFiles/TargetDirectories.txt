@@ -1,3 +1,0 @@
-D:/work/crane/algorithm/image_processing/non_local_means/cmake-build-debug/CMakeFiles/non_local_means.dir
-D:/work/crane/algorithm/image_processing/non_local_means/cmake-build-debug/CMakeFiles/edit_cache.dir
-D:/work/crane/algorithm/image_processing/non_local_means/cmake-build-debug/CMakeFiles/rebuild_cache.dir

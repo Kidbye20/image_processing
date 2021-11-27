@@ -1,0 +1,22 @@
+D:\software\editor\CLion\bin\cmake\win\bin\cmake.exe -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - MinGW Makefiles" D:\work\crane\algorithm\image_processing\non_local_means\cpu
+-- The C compiler identification is GNU 8.1.0
+-- The CXX compiler identification is GNU 8.1.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: D:/environments/C++/MinGW_posix_sjlj/mingw64/bin/gcc.exe - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: D:/environments/C++/MinGW_posix_sjlj/mingw64/bin/g++.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- OpenCV ARCH: x64
+-- OpenCV RUNTIME: mingw
+-- OpenCV STATIC: OFF
+-- Found OpenCV: D:/environments/C++/OpenCV/opencv-4.5.2/build_no_qt/install (found version "4.5.2") 
+-- Found OpenCV 4.5.2 in D:/environments/C++/OpenCV/opencv-4.5.2/build_no_qt/install/x64/mingw/lib
+-- You might need to add D:/environments/C++/OpenCV/opencv-4.5.2/build_no_qt/install/x64/mingw/bin to your PATH to be able to run your applications.
+-- Configuring done
+-- Generating done
+-- Build files have been written to: D:/work/crane/algorithm/image_processing/non_local_means/cpu/cmake-build-debug
