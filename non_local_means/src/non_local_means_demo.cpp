@@ -55,12 +55,11 @@ void denoise_gray_demo() {
         std::cout << "读取图片  " << noise_path << "  失败 !" << std::endl;
         return;
     }
-    // cv::resize(noise_image, noise_image, cv::Size(128, 128));
     cv::cvtColor(noise_image, noise_image, cv::COLOR_BGR2GRAY);
 
     cv::Mat denoised;
     run([&noise_image, &denoised](){
-        denoised = non_local_means(noise_image, 5, 2, 10);
+        denoised = non_local_means(noise_image, 5, 2, 10, "gaussi");
     }, "non_local_means_gray  :  ");
     const auto comparison_resultss = cv_concat({noise_image, denoised});
     cv_show(comparison_resultss);

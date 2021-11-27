@@ -1,5 +1,6 @@
 // C++
 #include <cmath>
+#include <cstring>
 #include <iostream>
 // self
 #include "non_local_means.h"
@@ -12,12 +13,39 @@ namespace {
     }
 }
 
+
+std::vector<double> get_kernel(const int window_size, const char* kernel_type) {
+    // 权重模板是均值的话
+    if(std::strcmp(kernel_type, "mean") == 0)
+        return std::vector<double> (window_size, 1. / (window_size));
+    // 高斯模板
+    else if(std::strcmp(kernel_type, "gaussi") == 0) {
+        std::vector<double> weight_kernel(window_size, 0);
+        int offset = -1;
+        double kernel_weight_sum = 0.0;
+        const int radius = (int(std::sqrt(window_size)) - 1) >> 1;
+        // 半径应该是 3 sigma 差不多了
+        const double variance = int((2 * radius + 1) / 3);
+        const double variance_2 = -0.5 / (variance * variance);
+        for(int i = -radius; i <= radius; ++i)
+            for(int j = -radius; j <= radius; ++j) {
+                weight_kernel[++offset] = std::exp(variance_2 * (i * i + j * j));
+                kernel_weight_sum += weight_kernel[offset];
+            }
+        for(int i = 0;i < window_size; ++i) weight_kernel[i] /= kernel_weight_sum;
+        return weight_kernel;
+    }
+    // 没声明的话, 返回全 0 模板
+    else return std::vector<double>(window_size, 0);
+
+}
+
 // 没错, 这里的那个 uchar 会溢出, 有点东西啊, 恶心
-cv::Mat non_local_means_gray(const cv::Mat& noise_image, const int search_radius, const int radius, const int sigma) {
+cv::Mat non_local_means_gray(const cv::Mat& noise_image, const int search_radius, const int radius, const int sigma, const char* kernel_type) {
     // 先做一个计算领域相似性的权重模板, 先来最简单的均值模板
     const int window_len = (radius << 1) + 1;
     const int window_size = window_len * window_len;
-    std::vector<double> weights_kernel(window_size, 1. / (window_size));
+    const auto weights_kernel = get_kernel(window_size, kernel_type);
     const double sigma_2_inv = 1. / (sigma * sigma);
     // 收集目标图像的信息
     cv::Mat denoised = noise_image.clone();
@@ -81,8 +109,8 @@ cv::Mat non_local_means_gray(const cv::Mat& noise_image, const int search_radius
 }
 
 // 搜索窗口大小 11x11, 邻域 5x5
-cv::Mat non_local_means(const cv::Mat& noise_image, const int search_radius, const int radius, const int sigma) {
+cv::Mat non_local_means(const cv::Mat& noise_image, const int search_radius, const int radius, const int sigma, const char* kernel_type) {
     const int C = noise_image.channels();
-    if(C == 1) return non_local_means_gray(noise_image, search_radius, radius, sigma);
+    if(C == 1) return non_local_means_gray(noise_image, search_radius, radius, sigma, kernel_type);
     return noise_image;
 }

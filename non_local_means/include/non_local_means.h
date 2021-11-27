@@ -8,7 +8,7 @@
 
 
 
-cv::Mat non_local_means(const cv::Mat& noise_image, const int search_radius=5, const int radius=2, const int sigma=1);
+cv::Mat non_local_means(const cv::Mat& noise_image, const int search_radius=5, const int radius=2, const int sigma=1, const char* kernel_type="mean");
 
 
 

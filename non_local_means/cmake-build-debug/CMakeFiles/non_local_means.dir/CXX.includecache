@@ -361,6 +361,8 @@ D:/environments/C++/OpenCV/opencv-4.5.2/build_no_qt/install/include/opencv2/open
 D:/work/crane/algorithm/image_processing/non_local_means/src/non_local_means.cpp
 cmath
 -
+cstring
+-
 iostream
 -
 non_local_means.h
