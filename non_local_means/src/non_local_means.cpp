@@ -27,26 +27,28 @@ cv::Mat non_local_means_gray(const cv::Mat& noise_image, const int search_radius
     const auto padded_image = make_pad(noise_image, radius, radius);
     const int H2 = padded_image.rows;
     const int W2 = padded_image.cols;
+    const uchar* const noise_ptr = noise_image.data;
     const uchar* const padded_ptr = padded_image.data;
     // 现在开始滤波, 求目标图像中的每一点
     for(int i = 0;i < H; ++i) {
         const int left = std::max(radius, i - search_radius);
         const int right = std::min(W2, i + search_radius);
         for(int j = 0;j < W; ++j) {
-            // 当前要去噪的点 (x, y), 以它为中心的区域的点, 我得收集起来
+            // 当前要去噪的点 (i, j), 以它为中心的区域的点, 我得收集起来
             uchar source[window_size];
             for(int t = 0;t < window_len; ++t)
-                std::memcpy(source + t * window_len, padded_ptr + i * W2 + j, window_len * sizeof(uchar));
+                std::memcpy(source + t * window_len, padded_ptr + (i + t) * W2 + j, window_len * sizeof(uchar));
             // 累计值 和 权重总和
             double sum_value = 0;
             double weight_sum = 0;
             double weight_max = -1e3;
-            // 每个点先确认它目前的搜索区域有多大
+            // 每个点先确认它目前的搜索区域有多大, 为什么是 radius?
             const int up = std::max(radius, j - search_radius);
             const int down = std::min(H2, j + search_radius);
             // 在这个搜索区域搜索
             for(int x = left; x < right; ++x) {
                 for(int y = up; y < down; ++y) {
+                    // (i, j) 是相对于原图来说的位置, (x, y) 是相对于 padded 之后的图像来说的
                     // 如果碰到自己了, 不计算
                     if(x == i and y == j)
                         continue;
@@ -54,7 +56,7 @@ cv::Mat non_local_means_gray(const cv::Mat& noise_image, const int search_radius
                     // 我得把这个区域的值都找出来, 收集起来
                     uchar target[window_size];
                     for(int t = 0;t < window_len; ++t)
-                        std::memcpy(target + t * window_len, padded_ptr + x * W2 + y, window_len * sizeof(uchar));
+                        std::memcpy(target + t * window_len, padded_ptr + (x - radius + t) * W2 + y - radius, window_len * sizeof(uchar));
                     // 然后计算两个区域的相似度
                     double distance = 0.0;
                     for(int k = 0;k < window_size; ++k) {
@@ -62,7 +64,9 @@ cv::Mat non_local_means_gray(const cv::Mat& noise_image, const int search_radius
                         distance += weights_kernel[k] * (res * res);
                     }
                     const double cur_weight = std::exp(-distance * sigma_2_inv);
+                    // 记录当前最大的权值
                     if(cur_weight > weight_max) weight_max = cur_weight;
+                    // 累加值
                     sum_value += cur_weight * padded_image.at<uchar>(x, y);
                     weight_sum += cur_weight;
                 }

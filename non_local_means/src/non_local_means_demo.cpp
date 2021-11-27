@@ -49,7 +49,7 @@ namespace {
 
 void denoise_gray_demo() {
     // 根据图片路径读取图像
-    const char* noise_path = "../images/denoise/Kodak24/18.png";
+    const char* noise_path = "../images/denoise/Kodak24/20.png";
     auto noise_image = cv::imread(noise_path);
     if(noise_image.empty()) {
         std::cout << "读取图片  " << noise_path << "  失败 !" << std::endl;

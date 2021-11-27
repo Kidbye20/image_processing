@@ -3,13 +3,13 @@ clear all;
 
 noise_image = imread("../images/denoise/Kodak24/20.png");
 noise_image = rgb2gray(noise_image);
-noise_image = imresize(noise_image, [128, 128]);
+% noise_image = imresize(noise_image, [128, 128]);
 
 denoised_result = NLmeans(noise_image, 2, 5, 10);
 
 imshow([noise_image, denoised_result]);
 
-imwrite(uin8(denoised_result), "./result.png");
+% imwrite(uin8(denoised_result), "./result.png");
 
 
 
