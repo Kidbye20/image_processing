@@ -11,6 +11,9 @@ y = 400;
 width = 60;
 height = 60;
 
+rectangle(origin, [x, y, width, height]);
+imshow(origin);
+
 lhs = imcrop(origin, [x, y, width, height]);
 rhs = imcrop(origin, [N + x, y, width, height]);
 figure; imshow([lhs, rhs]);

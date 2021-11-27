@@ -217,9 +217,9 @@ void detail_enhancement_demo() {
     // ---------- 【3】 加减处理得到细节增强结果
     const int length = denoised_image.rows * denoised_image.cols * denoised_image.channels();
     for(int i = 0;i < length; ++i)
-        denoised_image.data[i] = cv::saturate_cast<uchar>((noise_image.data[i] - denoised_image.data[i]) * 5 + noise_image.data[i]);
+        denoised_image.data[i] = cv::saturate_cast<uchar>((noise_image.data[i] - denoised_image.data[i]) * 5 + denoised_image.data[i]);
     for(int i = 0;i < length; ++i)
-        bilateral_result.data[i] = cv::saturate_cast<uchar>((noise_image.data[i] - bilateral_result.data[i]) * 5 + noise_image.data[i]);
+        bilateral_result.data[i] = cv::saturate_cast<uchar>((noise_image.data[i] - bilateral_result.data[i]) * 5 + bilateral_result.data[i]);
 
     // ---------- 【4】 保存结果
     const auto comparison_resultss = cv_concat({noise_image, denoised_image, bilateral_result});
@@ -274,20 +274,20 @@ void matting_demo() {
 
 int main() {
     std::cout << "opencv  :  " << CV_VERSION << std::endl;
-    // 灰度图如何根据引导滤波去噪
-    denoise_gray_demo();
-    // 彩色图如何根据引导滤波去噪
-    denoise_rgb_demo_1();
-    // 探究 epsilon 对滤波的影响
-    denoise_rgb_demo_2();
-    // 探究滤波核半径对滤波的影响
-    denoise_rgb_demo_3();
-    // flash 去噪实验
-    denoise_flash_demo();
+//    // 灰度图如何根据引导滤波去噪
+//    denoise_gray_demo();
+//    // 彩色图如何根据引导滤波去噪
+//    denoise_rgb_demo_1();
+//    // 探究 epsilon 对滤波的影响
+//    denoise_rgb_demo_2();
+//    // 探究滤波核半径对滤波的影响
+//    denoise_rgb_demo_3();
+//    // flash 去噪实验
+//    denoise_flash_demo();
     // 细节增强实验
     detail_enhancement_demo();
     // 抠图实验
-    matting_demo();
+//    matting_demo();
     // 还差个图像融合, 去雾
     return 0;
 }

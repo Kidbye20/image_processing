@@ -233,13 +233,36 @@ $$
 
 这就是所谓的边缘伪影和梯度反转现象。。。。我之前一直以为是平滑去噪会出现梯度反转，原来是细节增强，看来还是得看原论文才行。
 
-![原图 <------> guided filter  <------> bilateral filter](images/output/comparison_detail_enhancement.png)
+![](images/markdown/comparison_detail_enhancement_marked.png)
 
-<img src="images/markdown/comparison_detail_enhancement_crop.png" style="zoom:500%;" />
+<img src="images/markdown/comparison_detail_enhancement_croped_reversed_gradients.png" style="zoom:500%;" />
+
+<img src="images/markdown/comparison_detail_enhancement_croped_edge_artifacts.png" style="zoom:500%;" />
 
 梯度反转。。。why ?
 
-引导滤波的滤波输出在局部区域内和引导图像梯度是一致的，所以加减操作，梯度不变。但双边滤波不保证这一点。
+原图 $I$  ，引导图 $G$  ，滤波输出 $O$
+
+细节增强： $\hat{O} = (I - O) \times \lambda + O, \quad \lambda=5$
+
+梯度反转。。。why ?
+
+在这里引导滤波的引导图 $G$ 就是输入图 $I$ 本身，又根据 **滤波输出是引导图像的局部线性变换**，
+$$
+O_{i} = a_k \cdot G_{i} + b_k, \quad i \in w_k 
+$$
+给定窗口 $w_k$  ，
+$$
+\begin{aligned}
+\hat{O}^{w_k} &= (I^{w_k} - O^{w_k}) \times \lambda + O^{w_k}  \\
+&= (G^{w_k} - O^{w_k}) \times \lambda + O^{w_k} \\
+&= (G^{w_k} - (a_k \cdot G^{w_k} + b_k)) \times \lambda + a_k \cdot  G^{w_k} + b_k \\
+&= (1 + a_k - \lambda a_k)\cdot G^{w_k}+ (1 - \lambda)b_k
+\end{aligned}
+$$
+可见，细节增强之后的 $\hat{O}$  和引导图 $G$  在局部窗口 $w_k$  内呈线性关系，因此梯度也线性相关，因此，细节增强之后不会出现梯度反转的结果。
+
+但双边滤波没有局部线性变换的假设，因此可能出现局部的梯度反转。
 
 
 
