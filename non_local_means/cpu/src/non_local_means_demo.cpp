@@ -78,11 +78,11 @@ void denoise_rgb_demo_1() {
         std::cout << "读取图片  " << noise_path << "  失败 !" << std::endl;
         return;
     }
-    noise_image = cv_resize(noise_image, 256, 160);
+    noise_image = cv_resize(noise_image, 256, 180);
     cv::Mat denoised;
     run([&noise_image, &denoised](){
-        denoised = non_local_means(noise_image, 11, 5, 10, "mean", false);
-    }, "non_local_means_color  :  ");
+        denoised = non_local_means(noise_image, 7, 3, 10, "mean", false, false);
+    }, "color_split  :  ");
     const auto comparison_resultss = cv_concat({noise_image, denoised});
     cv_show(comparison_resultss);
     // 保存结果
@@ -90,6 +90,10 @@ void denoise_rgb_demo_1() {
     cv::imwrite(save_path, comparison_resultss, std::vector<int>({cv::IMWRITE_PNG_COMPRESSION, 0}));
 }
 
+
+
+
+void denoise_rgb_demo_2() {}
 
 
 int main() {
@@ -100,7 +104,10 @@ int main() {
 
     // 灰度图的快速 non_local_means
 
-    // 彩色图的普通 non_local_means
+    // 彩色图的分通道 non_local_means
     denoise_rgb_demo_1();
+
+    // 彩色图的三通道一起 non_local_means
+    denoise_rgb_demo_2();
     return 0;
 }
