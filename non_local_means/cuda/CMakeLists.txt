@@ -24,6 +24,17 @@ cuda_add_executable(non_local_means src/non_local_means_demo.cpp src/non_local_m
 # add_executable(non_local_means src/non_local_means_demo.cu src/non_local_means.cu)
 
 
+
+# Boost
+find_package(Boost REQUIRED COMPONENTS system filesystem)
+if(NOT Boost_FOUND)
+    message("Not found Boost")
+endif()
+include_directories(${Boost_INCLUDE_DIRS})
+message("${Boost_INCLUDE_DIRS}")
+message("${Boost_LIBRARIES}")
+
+
 # 寻找 opencv 的库
 set(OpenCV_DIR /usr/local/opencv/opencv-4.5.2/lib/cmake/opencv4)
 find_package(OpenCV REQUIRED)
@@ -31,10 +42,9 @@ find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 # 链接 opencv 动态库路径
 link_directories(${OpenCV_LIBRARY_DIRS})
-# 设置库文件
-target_link_libraries(non_local_means ${OpenCV_LIBS})
-
 
 # 设置库文件
-target_link_libraries(non_local_means ${OpenCV_LIBS})
+target_link_libraries(non_local_means ${OpenCV_LIBS} ${Boost_LIBRARIES})
+
+
 

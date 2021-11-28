@@ -2,6 +2,8 @@
 #include <chrono>
 #include <cstring>
 #include <iostream>
+// Boost
+#include <boost/scope_exit.hpp>
 // self
 #include "non_local_means.h"
 #include "cuda_helper.hpp"
@@ -151,6 +153,15 @@ cv::Mat non_local_means_gray(const cv::Mat& noise_image, const int search_radius
     crane::CudaSafeCall(cudaMalloc((void**)&cuda_in, padded_image_size));
     crane::CudaSafeCall(cudaMalloc((void**)&weights_kernel_ptr, window_size * sizeof(double)));
 
+    // 返回之前, RAII 释放 GPU 分配的内存
+    BOOST_SCOPE_EXIT_ALL(&) {
+        cudaFree(cuda_in);
+        cudaFree(cuda_out);
+        cudaFree(weights_kernel_ptr);
+        cudaDeviceReset();
+        std::cout << "GPU 上的申请的空间已 free!" << std::endl;
+    };
+
     // 把 cpu 内存的数据拷贝到 cuda 对应内存中
     cudaMemcpy(cuda_in, padded_ptr, padded_image_size, cudaMemcpyHostToDevice);
     cudaMemcpy(weights_kernel_ptr, &weights_kernel[0], window_size * sizeof(double), cudaMemcpyHostToDevice);
@@ -174,13 +185,6 @@ cv::Mat non_local_means_gray(const cv::Mat& noise_image, const int search_radius
     cv::Mat denoised = noise_image.clone();
     // 数据从 GPU 拷贝到 CPU, 填充图像
     cudaMemcpy(denoised.data, cuda_out, origin_image_size, cudaMemcpyDeviceToHost);
-
-    // 释放内存
-    cudaFree(cuda_in);
-    cudaFree(cuda_out);
-    cudaFree(weights_kernel_ptr);
-    cudaDeviceReset();
-    std::cout << "GPU 上的申请的空间已 free!" << std::endl;
 
     return denoised;
 }

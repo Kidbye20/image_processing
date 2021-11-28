@@ -466,6 +466,8 @@ non_local_means_EXTERNAL_OBJECTS = \
 ../bin/non_local_means: /usr/local/opencv/opencv-4.5.2/lib/libopencv_xfeatures2d.so.4.5.2
 ../bin/non_local_means: /usr/local/opencv/opencv-4.5.2/lib/libopencv_xobjdetect.so.4.5.2
 ../bin/non_local_means: /usr/local/opencv/opencv-4.5.2/lib/libopencv_xphoto.so.4.5.2
+../bin/non_local_means: /usr/lib/x86_64-linux-gnu/libboost_system.so.1.71.0
+../bin/non_local_means: /usr/lib/x86_64-linux-gnu/libboost_filesystem.so.1.71.0
 ../bin/non_local_means: /usr/local/opencv/opencv-4.5.2/lib/libopencv_shape.so.4.5.2
 ../bin/non_local_means: /usr/local/opencv/opencv-4.5.2/lib/libopencv_highgui.so.4.5.2
 ../bin/non_local_means: /usr/local/opencv/opencv-4.5.2/lib/libopencv_datasets.so.4.5.2
