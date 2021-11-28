@@ -59,7 +59,7 @@ void denoise_gray_demo() {
 
     cv::Mat denoised;
     run([&noise_image, &denoised](){
-        denoised = non_local_means(noise_image, 5, 2, 10, "mean");
+        denoised = non_local_means(noise_image, 5, 2, 10, "mean", true);
     }, "non_local_means_gray  :  ");
     const auto comparison_resultss = cv_concat({noise_image, denoised});
     cv_show(comparison_resultss);
