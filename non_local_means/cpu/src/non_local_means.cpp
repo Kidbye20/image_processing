@@ -58,8 +58,8 @@ cv::Mat non_local_means_gray(const cv::Mat& noise_image, const int search_radius
     const uchar* const padded_ptr = padded_image.data;
     // 现在开始滤波, 求目标图像中的每一点
     for(int i = 0;i < H; ++i) {
-        const int left = std::max(radius, i - search_radius);
-        const int right = std::min(W2, i + search_radius);
+        const int up = std::max(radius, i - search_radius);
+        const int down = std::min(H2, i + search_radius);
         for(int j = 0;j < W; ++j) {
             // 当前要去噪的点 (i, j), 以它为中心的区域的点, 我得收集起来
             uchar source[window_size];
@@ -70,11 +70,11 @@ cv::Mat non_local_means_gray(const cv::Mat& noise_image, const int search_radius
             double weight_sum = 0;
             double weight_max = -1e3;
             // 每个点先确认它目前的搜索区域有多大, 为什么是 radius?
-            const int up = std::max(radius, j - search_radius);
-            const int down = std::min(H2, j + search_radius);
+            const int left = std::max(radius, j - search_radius);
+            const int right = std::min(W2, j + search_radius);
             // 在这个搜索区域搜索
-            for(int x = left; x < right; ++x) {
-                for(int y = up; y < down; ++y) {
+            for(int x = up; x < down; ++x) {
+                for(int y = left; y < right; ++y) {
                     // (i, j) 是相对于原图来说的位置, (x, y) 是相对于 padded 之后的图像来说的
                     // 如果碰到自己了, 不计算
                     if(x == i and y == j)
@@ -273,8 +273,20 @@ cv::Mat non_local_means_color(const cv::Mat& noise_image, const int search_radiu
 // 搜索窗口大小 11x11, 邻域 5x5
 cv::Mat non_local_means(const cv::Mat& noise_image, const int search_radius, const int radius, const int sigma, const char* kernel_type, const bool fast) {
     const int C = noise_image.channels();
+    // 灰度图
     if(C == 1)
         if(fast == false) return non_local_means_gray(noise_image, search_radius, radius, sigma, kernel_type);
         else return fast_non_local_means_gray(noise_image, search_radius, radius, sigma, kernel_type);
+    // 彩色图的 non_local_means
+    else if(C == 3) {
+        std::vector<cv::Mat> bgr_channels;
+        cv::split(noise_image, bgr_channels);
+        std::vector<cv::Mat> denoised_channels;
+        for(const auto & ch : bgr_channels)
+            denoised_channels.emplace_back(non_local_means_gray(ch, search_radius, radius, sigma, kernel_type));
+        cv::Mat denoised;
+        cv::merge(denoised_channels, denoised);
+        return denoised;
+    }
     return noise_image;
 }

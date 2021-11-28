@@ -59,7 +59,7 @@ void denoise_gray_demo() {
 
     cv::Mat denoised;
     run([&noise_image, &denoised](){
-        denoised = non_local_means(noise_image, 5, 2, 10, "mean", true);
+        denoised = non_local_means(noise_image, 5, 2, 10, "mean", false);
     }, "non_local_means_gray  :  ");
     const auto comparison_resultss = cv_concat({noise_image, denoised});
     cv_show(comparison_resultss);
@@ -70,10 +70,37 @@ void denoise_gray_demo() {
 
 
 
+void denoise_rgb_demo_1() {
+    // 根据图片路径读取图像
+    const char* noise_path = "../../images/denoise/woman_1.png";
+    auto noise_image = cv::imread(noise_path);
+    if(noise_image.empty()) {
+        std::cout << "读取图片  " << noise_path << "  失败 !" << std::endl;
+        return;
+    }
+    noise_image = cv_resize(noise_image, 256, 160);
+    cv::Mat denoised;
+    run([&noise_image, &denoised](){
+        denoised = non_local_means(noise_image, 11, 5, 10, "mean", false);
+    }, "non_local_means_color  :  ");
+    const auto comparison_resultss = cv_concat({noise_image, denoised});
+    cv_show(comparison_resultss);
+    // 保存结果
+    const std::string save_path("./images/output/comparison_color_woman_1.png");
+    cv::imwrite(save_path, comparison_resultss, std::vector<int>({cv::IMWRITE_PNG_COMPRESSION, 0}));
+}
+
+
+
 int main() {
     std::cout << "opencv  :  " << CV_VERSION << std::endl;
+
     // 灰度图的 non_local_means
-    denoise_gray_demo();
+    // denoise_gray_demo();
+
     // 灰度图的快速 non_local_means
+
+    // 彩色图的普通 non_local_means
+    denoise_rgb_demo_1();
     return 0;
 }
