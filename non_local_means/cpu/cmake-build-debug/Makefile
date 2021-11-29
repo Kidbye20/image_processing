@@ -141,6 +141,33 @@ non_local_means/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\non_local_means.dir\build.make CMakeFiles/non_local_means.dir/build
 .PHONY : non_local_means/fast
 
+src/fast_non_local_means.obj: src/fast_non_local_means.cpp.obj
+
+.PHONY : src/fast_non_local_means.obj
+
+# target to build an object file
+src/fast_non_local_means.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\non_local_means.dir\build.make CMakeFiles/non_local_means.dir/src/fast_non_local_means.cpp.obj
+.PHONY : src/fast_non_local_means.cpp.obj
+
+src/fast_non_local_means.i: src/fast_non_local_means.cpp.i
+
+.PHONY : src/fast_non_local_means.i
+
+# target to preprocess a source file
+src/fast_non_local_means.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\non_local_means.dir\build.make CMakeFiles/non_local_means.dir/src/fast_non_local_means.cpp.i
+.PHONY : src/fast_non_local_means.cpp.i
+
+src/fast_non_local_means.s: src/fast_non_local_means.cpp.s
+
+.PHONY : src/fast_non_local_means.s
+
+# target to generate assembly for a file
+src/fast_non_local_means.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\non_local_means.dir\build.make CMakeFiles/non_local_means.dir/src/fast_non_local_means.cpp.s
+.PHONY : src/fast_non_local_means.cpp.s
+
 src/non_local_means.obj: src/non_local_means.cpp.obj
 
 .PHONY : src/non_local_means.obj
@@ -204,6 +231,9 @@ help:
 	@echo ... edit_cache
 	@echo ... rebuild_cache
 	@echo ... non_local_means
+	@echo ... src/fast_non_local_means.obj
+	@echo ... src/fast_non_local_means.i
+	@echo ... src/fast_non_local_means.s
 	@echo ... src/non_local_means.obj
 	@echo ... src/non_local_means.i
 	@echo ... src/non_local_means.s

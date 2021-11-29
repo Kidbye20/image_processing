@@ -58,9 +58,12 @@ void denoise_gray_demo() {
     cv::cvtColor(noise_image, noise_image, cv::COLOR_BGR2GRAY);
 
     cv::Mat denoised;
+//    run([&noise_image, &denoised](){
+//        denoised = non_local_means(noise_image, 5, 2, 10, "mean", false);
+//    }, "non_local_means_gray  :  ");
     run([&noise_image, &denoised](){
-        denoised = non_local_means(noise_image, 5, 2, 10, "mean", false);
-    }, "non_local_means_gray  :  ");
+        denoised = fast_non_local_means_gray(noise_image, 5, 2, 10);
+    }, "fast non_local_means  :  ");
     const auto comparison_resultss = cv_concat({noise_image, denoised});
     cv_show(comparison_resultss);
     // 保存结果
@@ -78,10 +81,10 @@ void denoise_rgb_demo_1() {
         std::cout << "读取图片  " << noise_path << "  失败 !" << std::endl;
         return;
     }
-    noise_image = cv_resize(noise_image, 256, 180);
+    noise_image = cv_resize(noise_image, 128, 90);
     cv::Mat denoised;
     run([&noise_image, &denoised](){
-        denoised = non_local_means(noise_image, 7, 3, 10, "mean", false, false);
+        denoised = non_local_means(noise_image, 5, 2, 10, "mean", false, false);
     }, "color_split  :  ");
     const auto comparison_resultss = cv_concat({noise_image, denoised});
     cv_show(comparison_resultss);
@@ -100,14 +103,12 @@ int main() {
     std::cout << "opencv  :  " << CV_VERSION << std::endl;
 
     // 灰度图的 non_local_means
-    // denoise_gray_demo();
-
-    // 灰度图的快速 non_local_means
+    denoise_gray_demo();
 
     // 彩色图的分通道 non_local_means
-    denoise_rgb_demo_1();
+    // denoise_rgb_demo_1();
 
     // 彩色图的三通道一起 non_local_means
-    denoise_rgb_demo_2();
+    // denoise_rgb_demo_2();
     return 0;
 }

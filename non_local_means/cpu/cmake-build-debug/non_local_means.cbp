@@ -86,6 +86,9 @@
 				</MakeCommands>
 			</Target>
 		</Build>
+		<Unit filename="D:/work/crane/algorithm/image_processing/non_local_means/cpu/src/fast_non_local_means.cpp">
+			<Option target="non_local_means"/>
+		</Unit>
 		<Unit filename="D:/work/crane/algorithm/image_processing/non_local_means/cpu/src/non_local_means.cpp">
 			<Option target="non_local_means"/>
 		</Unit>
