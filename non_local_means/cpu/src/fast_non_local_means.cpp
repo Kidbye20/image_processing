@@ -17,17 +17,11 @@ namespace {
         cv::waitKey(0);
         cv::destroyAllWindows();
     }
-    // uint8 -> double, 生成
-    std::vector<double> uchar2double(const cv::Mat& source, const int length) {
-        std::vector<double> double_image(length);
-        const uchar* const data_ptr = source.data;
-        for(int i = 0;i < length; ++i) double_image[i] = (double)data_ptr[i] / 255;
-        return double_image;
-    }
-    // uint8 -> double, 更新
-    void uchar2double(const uchar* const src_ptr, double* const des_ptr, const int length) {
-        for(int i = 0;i < length; ++i)
-            des_ptr[i] = (double)src_ptr[i] / 255;
+    inline double fast_exp(double y) {
+        double d;
+        *(reinterpret_cast<int*>(&d) + 0) = 0;
+        *(reinterpret_cast<int*>(&d) + 1) = static_cast<int>(1512775 * y + 1072632447);
+        return d;
     }
     // 均值滤波
     void box_filter(const double* const new_source, double* const sum_ptr, const int radius_h, const int radius_w, const int H, const int W) {
@@ -100,34 +94,42 @@ namespace {
 
 
 
-cv::Mat fast_non_local_means_gray(const cv::Mat& noise_image, const int search_radius, const int radius, const int sigma) {
+
+cv::Mat fast_non_local_means_gray(const cv::Mat& noise_image, const int search_radius, const int radius, const int sigma, const bool use_fast_exp) {
     // 收集图像信息
     int H = noise_image.rows;
     int W = noise_image.cols;
-    const int length = H * W;
     // 把图像补齐
     const cv::Mat padded_image = make_pad(noise_image, search_radius + radius, search_radius + radius);
     const int W2 = padded_image.cols;
+
     // 临时存储每一个相对位置的当前加权和和当前权重和
+    const int length = H * W;
     std::vector<double> cur_sum(length, 0);
     std::vector<double> weight_sum(length, 0);
 
-    const double sigma_inv = 1. / (sigma * sigma);
-
-    const int relative_pos = search_radius + radius;
-
+    // 当前同一个相对位置的点组成的图像
     cv::Mat relative_image = noise_image.clone();
-
+    // 存储每个点的差和 box_filter 的结果
     std::vector<double> residual_image(length, 0);
     std::vector<double> residual_mean(length, 0);
 
+    // 变量 sigma, 原文中 H
+    const double sigma_inv = 1. / (sigma * sigma);
+    // 相对位置偏移
+    const int relative_pos = search_radius + radius;
+
+    // 是否使用快速 exp
+    auto exp_func = fast_exp;
+
+    // 搜索窗口的每一个相对位置
     for (int x = -search_radius; x <= search_radius; ++x) {
         for (int y = -search_radius; y <= search_radius; ++y)  {
             // 开始拷贝
             for(int t = 0;t < H; ++t)
                 // 这里很耗时间
                 std::memcpy(relative_image.data + t * W, padded_image.data + (relative_pos + t + x) * W2 + relative_pos + y, sizeof(uchar) * W);
-            // dfgcv_show(relative_image);
+            // cv_show(relative_image);
             for(int i = 0;i < length; ++i) {
                 const double temp = noise_image.data[i] - relative_image.data[i];
                 residual_image[i] = temp * temp;
@@ -135,14 +137,39 @@ cv::Mat fast_non_local_means_gray(const cv::Mat& noise_image, const int search_r
             box_filter(residual_image.data(), residual_mean.data(), radius, radius, H, W);
             for(int i = 0;i < length; ++i) {
                 double distance = - residual_mean[i] * sigma_inv;
-                double w = std::exp(distance);
+                double w = exp_func(distance);
                 weight_sum[i] += w;
                 cur_sum[i] += w * relative_image.data[i];
             }
         }
     }
+//    for (int x = -search_radius; x <= search_radius; ++x) {
+//        for (int y = -search_radius; y <= search_radius; ++y)  {
+//            // 不拷贝, 存指针 速度并没有快多少
+//            uchar* _beg = padded_image.data + (relative_pos + x) * W2 + relative_pos + y;
+//            uchar* row_ptr = _beg;
+//            for(int i = 0, cnt = 0;i < length; ++i) {
+//                const double temp = noise_image.data[i] - row_ptr[cnt];
+//                residual_image[i] = temp * temp;
+//                if(++cnt == W) cnt = 0, row_ptr += W2;
+//            }
+//            box_filter(residual_image.data(), residual_mean.data(), radius, radius, H, W);
+//            row_ptr = _beg;
+//            for(int i = 0, cnt = 0;i < length; ++i) {
+//                double distance = - residual_mean[i] * sigma_inv;
+//                double w = std::exp(distance);
+//                weight_sum[i] += w;
+//                cur_sum[i] += w * row_ptr[cnt];
+//                if(++cnt == W) cnt = 0, row_ptr += W2;
+//            }
+//        }
+//    }
     auto denoised = noise_image.clone();
     for(int i = 0;i < length; ++i)
         denoised.data[i] = cv::saturate_cast<uchar>(cur_sum[i] / weight_sum[i]);
     return denoised;
 }
+
+
+
+// Eigen3 矩阵优化, 后面再说吧, 有点复杂了, box_filter 也得优化
