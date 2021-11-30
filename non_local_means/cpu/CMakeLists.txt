@@ -15,7 +15,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/include/)
 
 # 添加可执行文件
-add_executable(non_local_means src/non_local_means_demo.cpp src/non_local_means.cpp src/fast_non_local_means.cpp src/fast_non_local_means_2.cpp)
+add_executable(non_local_means src/non_local_means_demo.cpp src/non_local_means.cpp src/fast_non_local_means.cpp src/fast_non_local_means_2.cpp src/fast_non_local_means_3.cpp)
 
 
 # 设置  opencv

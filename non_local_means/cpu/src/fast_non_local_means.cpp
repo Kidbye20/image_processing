@@ -168,4 +168,6 @@ cv::Mat fast_non_local_means_gray_1(const cv::Mat& noise_image, const int search
 // Eigen3 矩阵优化, 后面再说吧, 有点复杂了, box_filter 也得跟着优化
 
 
+// CUDA 版本的优化空间还很大
+
 // KDTree

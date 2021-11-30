@@ -24,47 +24,51 @@ namespace {
     }
 }
 
-
-// 这是最简单的积分图求法
-void compute_integral_image(const double* const source, double* const target, const int H, const int W) {
-    target[0] = source[0];
-    // 第一行
-    for(int j = 1;j < W; ++j) target[j] = target[j - 1] + source[j];
-    // 第一列
-    for(int i = 1;i < H; ++i) target[i * W] = target[(i - 1) * W] + source[i * W];
-    // 中间的部分
-    for(int i = 1;i < H; ++i) {
-        const double* const row_ptr = source + i * W;
-        double* const res_ptr = target + i * W;
-        const double* const old_res_ptr = target + (i - 1) * W;
-        for(int j = 1;j < W; ++j)
-            // 画图就知道了
-            res_ptr[j] = row_ptr[j] + res_ptr[j - 1] + old_res_ptr[j] - old_res_ptr[j - 1];
+namespace  {
+    // 这是最简单的积分图求法
+    void compute_integral_image(const double* const source, double* const target, const int H, const int W) {
+        target[0] = source[0];
+        // 第一行
+        for(int j = 1;j < W; ++j) target[j] = target[j - 1] + source[j];
+        // 第一列
+        for(int i = 1;i < H; ++i) target[i * W] = target[(i - 1) * W] + source[i * W];
+        // 中间的部分
+        for(int i = 1;i < H; ++i) {
+            const double* const row_ptr = source + i * W;
+            double* const res_ptr = target + i * W;
+            const double* const old_res_ptr = target + (i - 1) * W;
+            for(int j = 1;j < W; ++j)
+                // 画图就知道了
+                res_ptr[j] = row_ptr[j] + res_ptr[j - 1] + old_res_ptr[j] - old_res_ptr[j - 1];
+        }
     }
-}
 
-// 这是最简单的积分图求法
-void fast_compute_integral_image(const double* const source, double* const target, const int H, const int W) {
-    // 首先第一行
-    target[0] = source[0];
-    for(int j = 1;j < W; ++j) target[j] = target[j - 1] + source[j];
-    // 从第二行开始累加
-    for(int i = 1;i < H; ++i) {
-        // 这一行的临时变量
-        double temp = 0.0;
-        const double* src_ptr = source + i * W;
-        double* row_ptr = target + i * W;
-        double* old_row_ptr = target + (i - 1) * W;
-        // 这一行到 j 的累加值, + 上一行同一列的值
-        for(int j = 0;j < W; ++j) {
-            temp += src_ptr[j];
-            row_ptr[j] = temp + old_row_ptr[j];
+    // 改进的 积分图求法
+    void fast_compute_integral_image(const double* const source, double* const target, const int H, const int W) {
+        // 首先第一行
+        target[0] = source[0];
+        for(int j = 1;j < W; ++j) target[j] = target[j - 1] + source[j];
+        // 从第二行开始累加
+        for(int i = 1;i < H; ++i) {
+            // 这一行的临时变量
+            double temp = 0.0;
+            const double* src_ptr = source + i * W;
+            double* row_ptr = target + i * W;
+            double* old_row_ptr = target + (i - 1) * W;
+            // 这一行到 j 的累加值, + 上一行同一列的值
+            for(int j = 0;j < W; ++j) {
+                temp += src_ptr[j];
+                row_ptr[j] = temp + old_row_ptr[j];
+            }
         }
     }
 }
 
 
+
+
 // 参考 https://www.ipol.im/pub/art/2014/120/
+// 参考 https://blog.csdn.net/haronchou/article/details/109223032
 cv::Mat fast_non_local_means_gray_2(const cv::Mat& noise_image, const int search_radius, const int radius, const int sigma, const bool use_fast_exp) {
     // 获取图像信息
     const int H = noise_image.rows;

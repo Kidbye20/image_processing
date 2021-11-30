@@ -21,5 +21,6 @@ cv::Mat non_local_means(
 cv::Mat fast_non_local_means_gray_1(const cv::Mat& noise_image, const int search_radius, const int radius, const int sigma, const bool use_fast_exp=false);
 // 用 integral image
 cv::Mat fast_non_local_means_gray_2(const cv::Mat& noise_image, const int search_radius, const int radius, const int sigma, const bool use_fast_exp=false);
-
+// 试试那个 SSE 指令
+cv::Mat fast_non_local_means_gray_3(const cv::Mat& noise_image, const int search_radius, const int radius, const int sigma, const bool use_fast_exp=false);
 #endif //NON_LOCAL_MEANS_H
