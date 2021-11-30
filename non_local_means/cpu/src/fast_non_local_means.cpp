@@ -12,6 +12,11 @@ namespace {
         cv::copyMakeBorder(one_image, padded_image, pad_H, pad_H, pad_W, pad_W, cv::BORDER_REPLICATE);
         return padded_image;
     }
+    void cv_show(const cv::Mat& one_image, const char* info="") {
+        cv::imshow(info, one_image);
+        cv::waitKey(0);
+        cv::destroyAllWindows();
+    }
     // uint8 -> double, 生成
     std::vector<double> uchar2double(const cv::Mat& source, const int length) {
         std::vector<double> double_image(length);
@@ -25,7 +30,7 @@ namespace {
             des_ptr[i] = (double)src_ptr[i] / 255;
     }
     // 均值滤波
-    std::vector<double> box_filter(const double* const new_source, const int radius_h, const int radius_w, const int H, const int W) {
+    void box_filter(const double* const new_source, double* const sum_ptr, const int radius_h, const int radius_w, const int H, const int W) {
         // 先对图像做 padding
         const int new_H = H + 2 * radius_h;
         const int new_W = W + 2 * radius_w;
@@ -58,8 +63,6 @@ namespace {
         const int kernel_w = (radius_w << 1) + 1;
         // 准备 buffer 和每一个点代表的 box 之和
         std::vector<double> buffer(new_W, 0.0);
-        std::vector<double> sum(H * W, 0.0);
-        double* const sum_ptr = sum.data();
         // 首先求目标(结果的)第一行的 buffer
         for(int i = 0;i < kernel_h; ++i) {
             const double* const row_ptr = padding_ptr + i * new_W;
@@ -92,7 +95,6 @@ namespace {
         const int length = H * W;
         for(int i = 0;i < length; ++i)
             sum_ptr[i] /= area;
-		return sum;
 	}
 }
 
@@ -105,13 +107,7 @@ cv::Mat fast_non_local_means_gray(const cv::Mat& noise_image, const int search_r
     const int length = H * W;
     // 把图像补齐
     const cv::Mat padded_image = make_pad(noise_image, search_radius + radius, search_radius + radius);
-    cv::Mat noise_double_image, padded_double_image;
-    noise_image.convertTo(noise_double_image, CV_64FC1);
-    padded_image.convertTo(padded_double_image, CV_64FC1);
-
-    std::vector<double> noise_double_image_array(length, 0);
-    for(int i = 0;i < length; ++i) noise_double_image_array[i] = (double)noise_image.data[i] / 255;
-
+    const int W2 = padded_image.cols;
     // 临时存储每一个相对位置的当前加权和和当前权重和
     std::vector<double> cur_sum(length, 0);
     std::vector<double> weight_sum(length, 0);
@@ -120,34 +116,28 @@ cv::Mat fast_non_local_means_gray(const cv::Mat& noise_image, const int search_r
 
     const int relative_pos = search_radius + radius;
 
-    cv::Mat St(H, W, CV_64FC1, 0.0);
+    cv::Mat relative_image = noise_image.clone();
 
-    for (int x = -search_radius; x <= search_radius; x++) {
-        for (int y = -search_radius; y <= search_radius; y++)  {
-//            const auto relative_image = padded_image(cv::Rect(relative_pos + x, relative_pos + y, W, H));
-//            std::vector<double> relative_double_image(length, 0.0), residual_double_image(length, 0);
-//            for(int i = 0;i < length; ++i) relative_double_image[i] = (double)relative_image.data[i] / 255;
-//            for(int i = 0;i < length; ++i) residual_double_image[i] = std::pow(noise_double_image_array[i] - relative_double_image[i], 2);
-//            const auto residual_double_mean = box_filter(residual_double_image.data(), radius, radius, H, W);
-//            for(int i = 0;i < length; ++i) {
-//                 double Disy = - residual_double_mean[i] * sigma_inv;
-//                 double w = std::exp(Disy);
-//                 weight_sum[i] += w;
-//                 cur_sum[i] += w * relative_double_image[i];
-//            }
-            const auto relative_image = padded_double_image(cv::Rect(relative_pos + x, relative_pos + y, W, H));
-            cv::Mat Disy = noise_double_image - relative_image;
-            Disy = Disy.mul(Disy);
-            cv::boxFilter(Disy, St, CV_64FC1, cv::Size(2 * radius + 1, 2 * radius + 1));
-            for (int i = 0; i < H; i++) {
-                double* const weight_sum_ptr = weight_sum.data() + i * W;
-                double* const cur_sum_ptr = cur_sum.data() + i * W;
-                for (int j = 0; j < W; j++) {
-                    double Disy = - St.at<double>(i, j) * sigma_inv;
-                    double w = std::exp(Disy);
-                    weight_sum_ptr[j] += w;
-                    cur_sum_ptr[j] += w * relative_image.at<double>(i, j);
-                }
+    std::vector<double> residual_image(length, 0);
+    std::vector<double> residual_mean(length, 0);
+
+    for (int x = -search_radius; x <= search_radius; ++x) {
+        for (int y = -search_radius; y <= search_radius; ++y)  {
+            // 开始拷贝
+            for(int t = 0;t < H; ++t)
+                // 这里很耗时间
+                std::memcpy(relative_image.data + t * W, padded_image.data + (relative_pos + t + x) * W2 + relative_pos + y, sizeof(uchar) * W);
+            // dfgcv_show(relative_image);
+            for(int i = 0;i < length; ++i) {
+                const double temp = noise_image.data[i] - relative_image.data[i];
+                residual_image[i] = temp * temp;
+            }
+            box_filter(residual_image.data(), residual_mean.data(), radius, radius, H, W);
+            for(int i = 0;i < length; ++i) {
+                double distance = - residual_mean[i] * sigma_inv;
+                double w = std::exp(distance);
+                weight_sum[i] += w;
+                cur_sum[i] += w * relative_image.data[i];
             }
         }
     }
@@ -156,127 +146,3 @@ cv::Mat fast_non_local_means_gray(const cv::Mat& noise_image, const int search_r
         denoised.data[i] = cv::saturate_cast<uchar>(cur_sum[i] / weight_sum[i]);
     return denoised;
 }
-
-
-
-//cv::Mat fast_non_local_means_gray(const cv::Mat& noise_image, const int search_radius, const int radius, const int sigma) {
-//    // 收集图像信息
-//    int H = noise_image.rows;
-//    int W = noise_image.cols;
-//    const int length = H * W;
-//    // 把图像补齐
-//    cv::Mat padded_image = make_pad(noise_image, search_radius + radius, search_radius + radius);
-//    const int W2 = padded_image.cols;
-//    const int length2  = padded_image.rows * padded_image.cols;
-//    // 图像 ./ 255
-//    std::vector<double> noise_double_image(length, 0);
-//    std::vector<double> padded_double_image(length2, 0);
-//    for(int i = 0;i < length; ++i) noise_double_image[i] = (double)noise_image.data[i];
-//    for(int i = 0;i < length2; ++i) padded_double_image[i] = (double)padded_image.data[i];
-//
-//    // 准备两个临时变量, 储存每一个相对位置的当前求和和当前权重之和
-//    std::vector<double> cur_sum(length, 0);
-//    std::vector<double> weight_sum(length, 0);
-//
-//    // 当前相对位置的图像
-//    std::vector<double> relative_image(length, 0);
-//    std::vector<double> residual_image(length, 0);
-//
-//    const double sigma_inv = 1. / (sigma * sigma);
-//
-//    const int relative_pos = search_radius + radius;
-//
-//    for (int x = -search_radius; x <= search_radius; x++) {
-//        for (int y = -search_radius; y <= search_radius; y++)  {
-//            // 从 padded_image 中找出那个中间的图像
-//            for(int t = 0;t < H; ++t)
-//                std::memcpy(relative_image.data() + t * W, padded_double_image.data() + (t + relative_pos) * W2 + relative_pos, W * sizeof(double));
-//            for(int i = 0;i < length; ++i) {
-//                const double temp = noise_double_image[i] - relative_image[i];
-//                residual_image[i] = temp * temp;
-//            }
-//            const auto residual_mean = box_filter(residual_image.data(), radius, radius, H, W);
-//
-//            for(int i = 0;i < length; ++i) {
-//                const double distance = - residual_mean[i] * sigma_inv;
-//                const double w = std::exp(distance);
-//                weight_sum[i] += w;
-//                cur_sum[i] += w * relative_image[i];
-//            }
-//        }
-//    }
-//    cv::Mat denoised = noise_image.clone();
-//    for(int i = 0;i < length; ++i)
-//        denoised.data[i] = cv::saturate_cast<uchar>(cur_sum[i] / weight_sum[i]);
-//    return  denoised;
-//}
-
-
-
-
-
-// Eigen3 矩阵优化
-
-
-
-//cv::Mat fast_non_local_means_gray(const cv::Mat& noise_image, const int search_radius, const int radius, const int sigma, const char* kernel_type) {
-//    // 先做一个计算领域相似性的权重模板, 先来最简单的均值模板
-//    const int window_len = (radius << 1) + 1;
-//    const int window_size = window_len * window_len;
-//    const double sigma_2_inv = 1. / (sigma * sigma);
-//    // 收集目标图像的信息
-//    cv::Mat denoised = noise_image.clone();
-//    const int H = noise_image.rows;
-//    const int W = noise_image.cols;
-//    const int length = H * W;
-//    // 将图像 padding 一下, 这次的 padding 跟前面不一样
-//    const auto padded_image = make_pad(noise_image, radius + search_radius, radius + search_radius);
-//    const int H2 = padded_image.rows;
-//    const int W2 = padded_image.cols;
-//    // 准备几个中间变量
-//    std::vector<double> sum_value(length, 0.0);
-//    std::vector<double> weight_sum(length, 0.0);
-//    std::vector<double> weight_max(length, 1e-3);
-//    // 输入图的 double 图像
-//    const auto noise_double_image = uchar2double(noise_image, length);
-//    // 每次相对位置代表的那个图像
-//    // 上面两张图象的差的平方
-//    std::vector<double> residual(length, 0.0);
-//    double* const residual_ptr = residual.data();
-//    // 从每一个相对位置开始计算
-//    const int relative = radius + search_radius;
-//    for(int x = -search_radius; x <= search_radius; ++x) {
-//        for(int y = -search_radius; y <= search_radius; ++y) {
-//            // 如果和当前点一模一样
-//            if(x == 0 and y == 0) continue;
-//            // 首先, 当前相对位置有一个图像, 先把它抠出来
-//            const auto relative_image = padded_image(cv::Rect(relative + x, relative + y, W, H));
-//            for(int i = 0;i < 10; ++i)
-//                std::cout << double(relative_image.data[i]) << " ";
-//            std::cout << std::endl;
-//            const auto relative_double_image = uchar2double(relative_image, length);
-//            // 接下来, 重头戏,
-//            // (relative_double_image - noise_double_image) ^ 2 的积分图
-//            for(int i = 0;i < length; ++i) {
-//                const double temp = relative_double_image[i] - noise_double_image[i];
-//                const double res = temp * temp;
-//                residual_ptr[i] = res; // 均值滤波
-//            }
-//            // 算 box_filter
-//            const auto residual_mean = box_filter(residual_ptr, radius, radius, H, W);
-//            // 现在开始图像中的每一个点, 开始累计
-//            for(int i = 0;i < length; ++i) {
-//                const double cur_weight = std::exp(-residual_mean[i] * sigma_2_inv);
-//                weight_sum[i] += cur_weight;
-//                sum_value[i] += cur_weight * relative_double_image[i];
-//                if(cur_weight > weight_max[i]) weight_max[i] = cur_weight;
-//            }
-//        }
-//    }
-//    // 结束之后
-//    std::cout << "length  " << length << std::endl;
-//    for(int i = 0;i < length; ++i) sum_value[i] += weight_max[i] * noise_double_image[i];
-//    for(int i = 0;i < length; ++i) weight_sum[i] += weight_max[i];
-//    for(int i = 0;i < length; ++i) denoised.data[i] = cv::saturate_cast<uchar>(255 * (sum_value[i] / weight_sum[i]));
-//    return denoised;
-//}
