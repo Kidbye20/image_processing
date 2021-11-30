@@ -57,20 +57,23 @@ void denoise_gray_demo() {
     }
     cv::cvtColor(noise_image, noise_image, cv::COLOR_BGR2GRAY);
 
-    cv::Mat denoised, denoised_fast_1, denoised_fast_2;
-//    // ---------- 【1】普通的 non_local_means
-//    run([&noise_image, &denoised](){
-//        denoised = non_local_means(noise_image, 5, 2, 10, "mean", false);
-//    }, "non_local_means_gray  :  ");
-//    // ---------- 【1】经 box_filter 加速的 non_local_means
-//    run([&noise_image, &denoised_fast_1](){
-//        denoised_fast_1 = fast_non_local_means_gray_1(noise_image, 5, 2, 10);
-//    }, "box filter 优化  :  ");
-    // ---------- 【1】经 积分图 加速的 non_local_means
+    cv::Mat denoised, denoised_fast_1, denoised_fast_2, denoised_fast_3;
+    // ---------- 【1】普通的 non_local_means
+    run([&noise_image, &denoised](){
+        denoised = non_local_means(noise_image, 5, 2, 10, "mean", false);
+    }, "non_local_means_gray  :  ");
+    // ---------- 【2】经 box_filter 加速的 non_local_means
+    run([&noise_image, &denoised_fast_1](){
+        denoised_fast_1 = fast_non_local_means_gray_1(noise_image, 5, 2, 10);
+    }, "box filter 优化  :  ");
+    // ---------- 【3】经 积分图 加速的 non_local_means
     run([&noise_image, &denoised_fast_2](){
-        denoised_fast_2 = fast_non_local_means_gray_3(noise_image, 5, 2, 10);
+        denoised_fast_2 = fast_non_local_means_gray_2(noise_image, 5, 2, 10);
     }, "积分图 优化  :  ");
-    const auto comparison_resultss = cv_concat({noise_image, denoised_fast_2}); // denoised, denoised_fast_1,
+    run([&noise_image, &denoised_fast_3](){
+        denoised_fast_3 = fast_non_local_means_gray_3(noise_image, 5, 2, 10);
+    }, "积分图 AVX 优化  :  ");
+    const auto comparison_resultss = cv_concat({noise_image, denoised, denoised_fast_1, denoised_fast_2, denoised_fast_3});
     cv_show(comparison_resultss);
     // 保存结果
     const std::string save_path("./images/output/comparison_gray.png");
