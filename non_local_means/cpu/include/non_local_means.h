@@ -17,6 +17,9 @@ cv::Mat non_local_means(
         const bool fast=false,
         const bool multi_channel=false);
 
-cv::Mat fast_non_local_means_gray(const cv::Mat& noise_image, const int search_radius, const int radius, const int sigma, const bool use_fast_exp=false);
+// 用 box_filter
+cv::Mat fast_non_local_means_gray_1(const cv::Mat& noise_image, const int search_radius, const int radius, const int sigma, const bool use_fast_exp=false);
+// 用 integral image
+cv::Mat fast_non_local_means_gray_2(const cv::Mat& noise_image, const int search_radius, const int radius, const int sigma, const bool use_fast_exp=false);
 
 #endif //NON_LOCAL_MEANS_H

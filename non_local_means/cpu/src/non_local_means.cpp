@@ -48,6 +48,7 @@ std::vector<double> get_kernel(const int window_size, const char* kernel_type) {
 }
 
 
+// 普通的
 cv::Mat non_local_means_gray(const cv::Mat& noise_image, const int search_radius, const int radius, const int sigma, const char* kernel_type) {
     // 先做一个计算领域相似性的权重模板, 先来最简单的均值模板
     const int window_len = (radius << 1) + 1;
@@ -121,7 +122,7 @@ cv::Mat non_local_means_gray(const cv::Mat& noise_image, const int search_radius
 
 
 
-// 有两种写法
+// 三通道一起考虑算 mse
 cv::Mat non_local_means_color(const std::vector<cv::Mat>& noise_channels, const int search_radius=5, const int radius=2, const int sigma=1, const char* kernel_type="mean") {
     return cv::Mat();
 }
@@ -133,6 +134,7 @@ cv::Mat non_local_means(const cv::Mat& noise_image, const int search_radius, con
     // 灰度图
     if(C == 1) {
         if(!fast) return non_local_means_gray(noise_image, search_radius, radius, sigma, kernel_type);
+        else return fast_non_local_means_gray_2(noise_image, search_radius, radius, sigma);
     }
     // 彩色图的 non_local_means
     else if(C == 3) {
@@ -141,7 +143,10 @@ cv::Mat non_local_means(const cv::Mat& noise_image, const int search_radius, con
         if(!multi_channel) {
             std::vector<cv::Mat> denoised_channels;
             for(const auto & ch : bgr_channels)
-                denoised_channels.emplace_back(non_local_means_gray(ch, search_radius, radius, sigma, kernel_type));
+                if(!fast)
+                    denoised_channels.emplace_back(non_local_means_gray(ch, search_radius, radius, sigma, kernel_type));
+                else
+                    denoised_channels.emplace_back(fast_non_local_means_gray_2(ch, search_radius, radius, sigma));
             cv::Mat denoised;
             cv::merge(denoised_channels, denoised);
             return denoised;

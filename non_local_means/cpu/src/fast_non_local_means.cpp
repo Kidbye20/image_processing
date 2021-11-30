@@ -17,7 +17,7 @@ namespace {
         cv::waitKey(0);
         cv::destroyAllWindows();
     }
-    inline double fast_exp(double y) {
+    inline double fast_exp(const double y) {
         double d;
         *(reinterpret_cast<int*>(&d) + 0) = 0;
         *(reinterpret_cast<int*>(&d) + 1) = static_cast<int>(1512775 * y + 1072632447);
@@ -94,55 +94,54 @@ namespace {
 
 
 
-
-cv::Mat fast_non_local_means_gray(const cv::Mat& noise_image, const int search_radius, const int radius, const int sigma, const bool use_fast_exp) {
-    // 收集图像信息
-    int H = noise_image.rows;
-    int W = noise_image.cols;
-    // 把图像补齐
-    const cv::Mat padded_image = make_pad(noise_image, search_radius + radius, search_radius + radius);
-    const int W2 = padded_image.cols;
-
-    // 临时存储每一个相对位置的当前加权和和当前权重和
+/*
+ * 历程卡了我两天, 原来 cv::Rect 出来的图像不是连续存储的, 坑爹啊, 所以每次得到的图像就很奇怪, 我怎么看偏移都没错, 但结果就是错的
+ * 还有一个 padded_image 的宽不是 W, 不是 W ! 不是 W !!!!
+ */
+cv::Mat fast_non_local_means_gray_1(const cv::Mat& noise_image, const int search_radius, const int radius, const int sigma, const bool use_fast_exp) {
+    // 获取图像信息
+    const int H = noise_image.rows;
+    const int W = noise_image.cols;
     const int length = H * W;
+    // 对图像做补齐操作
+    const int relative_pos = search_radius + radius;
+    const auto padded_image = make_pad(noise_image, relative_pos, relative_pos);
+    const int W2 = padded_image.cols;
+    // 存储每个点的当前求和, 以及当前权重之和
     std::vector<double> cur_sum(length, 0);
     std::vector<double> weight_sum(length, 0);
-
-    // 当前同一个相对位置的点组成的图像
+    // 当前相对位置对应的图像
     cv::Mat relative_image = noise_image.clone();
-    // 存储每个点的差和 box_filter 的结果
-    std::vector<double> residual_image(length, 0);
-    std::vector<double> residual_mean(length, 0);
-
-    // 变量 sigma, 原文中 H
+    // 当前相对位置对应 MSE, 和平均 MSE
+    std::vector<double> relative_errors(length, 0);
+    std::vector<double> relative_mean(length, 0);
     const double sigma_inv = 1. / (sigma * sigma);
-    // 相对位置偏移
-    const int relative_pos = search_radius + radius;
-
-    // 是否使用快速 exp
-    auto exp_func = fast_exp;
-
-    // 搜索窗口的每一个相对位置
-    for (int x = -search_radius; x <= search_radius; ++x) {
-        for (int y = -search_radius; y <= search_radius; ++y)  {
-            // 开始拷贝
+    // 遍历每一个相对位置
+    for(int x = -search_radius; x <= search_radius; ++x) {
+        for(int y = -search_radius; y <= search_radius; ++y) {
+            // 首先把当前相对位置对应的图像抠出来(这里有点消耗时间)
             for(int t = 0;t < H; ++t)
-                // 这里很耗时间
-                std::memcpy(relative_image.data + t * W, padded_image.data + (relative_pos + t + x) * W2 + relative_pos + y, sizeof(uchar) * W);
-            // cv_show(relative_image);
+                std::memcpy(relative_image.data + t * W, padded_image.data + (relative_pos + x + t) * W2 + relative_pos + y, W * sizeof(uchar));
+            // 二者计算 mse
             for(int i = 0;i < length; ++i) {
-                const double temp = noise_image.data[i] - relative_image.data[i];
-                residual_image[i] = temp * temp;
+                const double error = relative_image.data[i] - noise_image.data[i];
+                relative_errors[i] = error * error;
             }
-            box_filter(residual_image.data(), residual_mean.data(), radius, radius, H, W);
+            // 求 mse 的平均图
+            box_filter(relative_errors.data(), relative_mean.data(), radius, radius, H, W);
+            // 遍历图像中每个点, 记录当前相对位置对这个点的权重
             for(int i = 0;i < length; ++i) {
-                double distance = - residual_mean[i] * sigma_inv;
-                double w = exp_func(distance);
-                weight_sum[i] += w;
+                const double w = fast_exp(-relative_mean[i] * sigma_inv);
                 cur_sum[i] += w * relative_image.data[i];
+                weight_sum[i] += w;
             }
         }
     }
+    auto denoised = noise_image.clone();
+    for(int i = 0;i < length; ++i)
+        denoised.data[i] = cv::saturate_cast<uchar>(cur_sum[i] / weight_sum[i]);
+    return denoised;
+}
 //    for (int x = -search_radius; x <= search_radius; ++x) {
 //        for (int y = -search_radius; y <= search_radius; ++y)  {
 //            // 不拷贝, 存指针 速度并没有快多少
@@ -164,12 +163,9 @@ cv::Mat fast_non_local_means_gray(const cv::Mat& noise_image, const int search_r
 //            }
 //        }
 //    }
-    auto denoised = noise_image.clone();
-    for(int i = 0;i < length; ++i)
-        denoised.data[i] = cv::saturate_cast<uchar>(cur_sum[i] / weight_sum[i]);
-    return denoised;
-}
 
 
+// Eigen3 矩阵优化, 后面再说吧, 有点复杂了, box_filter 也得跟着优化
 
-// Eigen3 矩阵优化, 后面再说吧, 有点复杂了, box_filter 也得优化
+
+// KDTree
