@@ -56,7 +56,7 @@ namespace {
 
 
 void dark_channel_prior_demo_1() {
-    const std::string image_path("../images/dehaze/he_2019/canon3.bmp");
+    const std::string image_path("../images/dehaze/he_2019/tiananmen1.bmp");
     const auto haze_image = cv::imread(image_path);
     if(haze_image.empty()) {
         std::cout << "读取图像 " << image_path << " 失败 !\n";

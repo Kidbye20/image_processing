@@ -15,7 +15,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/include/)
 
 # 添加可执行文件
-add_executable(guided_filter src/dehaze_demo.cpp include/dark_channel_prior.h src/dark_channel_prior.cpp)
+add_executable(guided_filter src/dehaze_demo.cpp src/dark_channel_prior.cpp src/guided_filter.cpp)
 
 
 # 设置  opencv
@@ -26,6 +26,11 @@ find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 # 链接 opencv 动态库路径
 link_directories(${OpenCV_LIBRARY_DIRS})
+
+
+# 添加 Eigen3 库
+include_directories(D:/environments/C++/3rdparty/Eigen3/eigen-3.3.9/installed/include/eigen3)
+
 
 # 设置库文件
 target_link_libraries(guided_filter ${OpenCV_LIBS})
