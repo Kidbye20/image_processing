@@ -8,6 +8,14 @@
 
 
 
-std::map<const std::string, cv::Mat> dark_channel_prior_dehaze(const cv::Mat& haze_image, const int radius=3, const double top_percent=0.001, const double t0=0.1, const double omega=0.95, const bool guided=false);
+std::map<const std::string, cv::Mat> dark_channel_prior_dehaze(
+        const cv::Mat& haze_image,
+        const int radius=3,
+        const double top_percent=0.001,
+        const double t0=0.1,
+        const double omega=0.95,
+        const bool guided=false,
+        const bool multi_T=false,
+        const bool return_visuals=false);
 
 #endif //GUIDED_FILTER_DARK_CHANNEL_PRIOR_H
