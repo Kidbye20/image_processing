@@ -63,14 +63,15 @@ cv::Mat get_dark_channel(const cv::Mat& I, const int H, const int W, const int r
         dark_channel.data[i] = min_pixel;
     }
     auto min_dark_channel = dark_channel.clone();
+    cv::Mat temp;
+    // 存储第一次横向最小值滤波的结果
+    if(accelerate) temp = dark_channel.clone();
     // 然后, 对这个暗通道执行区域最小值滤波
     dark_channel = make_pad(dark_channel, radius, radius);
     const int W2 = dark_channel.cols;
     const int kernel_size = (radius << 1) + 1;
     // 如果最小值滤波采用加速的话(还有更更快的写法可以参考 http://blog.sina.com.cn/s/blog_7889f9830101ew9a.html)
     if(accelerate) {
-        // 存储第一次横向最小值滤波的结果
-        auto temp = dark_channel.clone();
         // 先横向扫一遍
         for(int i = 0;i < H; ++i) {
             uchar* const temp_ptr = temp.data + i * W;
@@ -180,12 +181,12 @@ std::map<const std::string, cv::Mat> dark_channel_prior_dehaze(const cv::Mat& I,
     assert(C == 3);
     const int length = H * W;
     // 首先求 I 的暗通道图 I_dark  8ms
-    const auto I_dark = get_dark_channel(I, H, W, radius);
+    const auto I_dark = get_dark_channel(I, H, W, radius, false);
     // 然后求全局大气光 A, 一个数, 需要汇总前 top_percent 的像素, 然后求出来  12ms
     const auto A = get_global_atmospheric_light(I, I_dark, H, W, top_percent);
     // 现在我求出了三个通道的 A, 准备分别求三个通道的折射率 T = 1 - I_dark / A
     std::vector< std::vector<double> > T(3, std::vector<double>(length));
-    const uchar* I_dark_ptr = I_dark.data;
+    const uchar* const I_dark_ptr = I_dark.data;
     for(int ch = 0;ch < 3; ++ch) {
         double* const cur_T = T[ch].data();
         // T(x) = 1 - I_dark(x) / A
@@ -228,6 +229,7 @@ std::map<const std::string, cv::Mat> dark_channel_prior_dehaze(const cv::Mat& I,
         for(int i = 0;i < 3; ++i) packed_results.emplace("T_" + std::to_string(i), T_results_origin[i]);
         for(int i = 0;i < 3; ++i) packed_results.emplace("guided_T_" + std::to_string(i), T_results_guided[i]);
         packed_results.emplace("dehazed_guided", dehazed_guided);
+        cv_show(dehazed_guided);
     }
     return packed_results;
 }

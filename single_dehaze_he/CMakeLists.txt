@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.12)
 project(guided_filter)
 
 # 添加编译选项
-SET(CMAKE_CXX_FLAGS "-std=c++14 -O1 -lgdi32")
+SET(CMAKE_CXX_FLAGS "-std=c++14 -O1")
 
 
 set(PROJECT_SOURCE_DIR ./)

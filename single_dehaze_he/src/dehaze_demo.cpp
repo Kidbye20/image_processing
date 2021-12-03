@@ -19,7 +19,6 @@ namespace {
     void cv_info(const cv::Mat& one_image) {
         std::cout << "高  :  " << one_image.rows << "\n宽  :  " << one_image.cols << "\n通道 :  " << one_image.channels() << std::endl;
         std::cout << "步长 :  " << one_image.step << std::endl;
-        // 864 = 3 * 288
     }
 
     void cv_show(const cv::Mat& one_image, const char* info="") {
@@ -56,7 +55,7 @@ namespace {
 
 
 void dark_channel_prior_demo_1() {
-    const std::string image_path("../images/dehaze/he_2019/tiananmen1.bmp");
+    const std::string image_path("../images/dehaze/he_2019/train.bmp");
     const auto haze_image = cv::imread(image_path);
     if(haze_image.empty()) {
         std::cout << "读取图像 " << image_path << " 失败 !\n";
@@ -65,9 +64,10 @@ void dark_channel_prior_demo_1() {
     // 送到暗通道先验去雾算法
     std::map<const std::string, cv::Mat> dehazed_result;
     run([&](){
-        dehazed_result = dark_channel_prior_dehaze(haze_image, 3, 0.001, 0.1, 0.95, false);
+        dehazed_result = dark_channel_prior_dehaze(haze_image, 3, 0.001, 0.1, 0.95, true);
     }, "普通 3 通道分别估计 T(x) ====>  ");
     // ---------- 【】展示结果与保存
+    cv_show(dehazed_result["dark_channel"]);
     // const auto dark_channel = cv_stack({dehazed_result["dark_channel"], dehazed_result["dark_channel"], dehazed_result["dark_channel"]});
     const auto comparison_results = cv_concat({haze_image, dehazed_result["dehazed"]});
     cv_show(comparison_results);
