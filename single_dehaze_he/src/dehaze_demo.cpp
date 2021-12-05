@@ -16,6 +16,7 @@ void dark_channel_prior_demo_2();
 void dark_channel_prior_demo_3();
 void dark_channel_prior_demo_4();
 void dark_channel_prior_demo_5();
+void dark_channel_prior_demo_6();
 
 
 int main() {
@@ -35,8 +36,11 @@ int main() {
 //    // 把估计 A 的那些点都抠出来
 //    dark_channel_prior_demo_4();
 
-    // 是否使用 t0
-    dark_channel_prior_demo_5();
+//    // 是否使用 t0
+//    dark_channel_prior_demo_5();
+
+    // 天安门那张图为什么我会错
+    dark_channel_prior_demo_6();
 
     return 0;
 }
@@ -197,7 +201,7 @@ void dark_channel_prior_demo_2() {
 
     // ---------- 【3】三通道分开计算透射图 T, 不经过 guided filter 精修
     run([&](){
-        dehazed_result = dark_channel_prior_dehaze(haze_image, 3, 0.001, 0.1, 0.95, false, true, true);
+        dehazed_result = dark_channel_prior_dehaze(haze_image, 6, 0.001, 0.1, 0.95, false, true, true);
     }, "t(x) = 3, without guide  ====>  ");
     comparison_results = cv_concat(
         cv_concat({
@@ -368,3 +372,28 @@ void dark_channel_prior_demo_5() {
     cv_write(comparison_results, "./images/output/t_1_t_0.png");
 }
 
+
+
+void dark_channel_prior_demo_6() {
+    const std::string image_path("../images/dehaze/he_2019/tiananmen1.bmp");
+    const auto haze_image = cv::imread(image_path);
+    if(haze_image.empty()) {
+        std::cout << "读取图像 " << image_path << " 失败 !\n";
+        return;
+    }
+    cv::Mat comparison_results;
+    std::map<const std::string, cv::Mat> dehazed_result;
+
+    // ---------- 【2】三通道一个透射图 T, 经过 guided filter 精修
+    run([&](){
+        dehazed_result = dark_channel_prior_dehaze(haze_image, 3, 0.001, 0.3, 0.95, true, false, true);
+    }, "t(x) = 1, with guide  ====>  ");
+    comparison_results = cv_concat({
+        dehazed_result["A_points"],
+//        cv_stack({dehazed_result["dark_channel"], dehazed_result["dark_channel"], dehazed_result["dark_channel"]}),
+//        cv_stack({dehazed_result["T"], dehazed_result["T"], dehazed_result["T"]}),
+//        cv_stack({dehazed_result["T_guided"], dehazed_result["T_guided"], dehazed_result["T_guided"]}),
+        dehazed_result["dehazed"]});
+    cv_show(comparison_results);
+    cv_write(comparison_results, "./images/output/t_1_with_guide.png");
+}
