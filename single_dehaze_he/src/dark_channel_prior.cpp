@@ -48,8 +48,8 @@ namespace {
 
 
 
-// 这里好像用 uchar 比较
-std::vector<double> get_dark_channel(const cv::Mat& I, const std::vector<double>& A, const double t0, const int radius, const bool accelerate=true) {
+// double 图找暗通道
+std::vector<double> get_dark_channel_double(const cv::Mat& I, const std::vector<double>& A, const double t0, const int radius, const bool accelerate=false) {
     // 准备一些变量
     const int H = I.rows, W = I.cols;
     const int H2 = H + 2 * radius, W2 = W + 2 * radius;
@@ -73,27 +73,30 @@ std::vector<double> get_dark_channel(const cv::Mat& I, const std::vector<double>
     }
     // 准备返回结果
     std::vector<double> min_dark_channel(length, 0);
-    // 准备对 dark_channel 做最小值滤波
-    for(int i = 0;i < H; ++i) {
-        double* const min_row_ptr = min_dark_channel.data() + i * W;
-        for(int j = 0;j < W; ++j) {
-            double min_pixel = 1e7;
-            // 每个点, 找出它所在的 kernel 所有元素, 然后逐一比较
-            for(int x = 0;x < kernel_size; ++x) {
-                // 获取 padded_I 中 kernel 这一行的指针
-                double* const row_ptr = dark_channel.data() + (i + x) * W2 + j;
-                for(int y = 0;y < kernel_size; ++y)
-                    if(min_pixel > row_ptr[y]) min_pixel = row_ptr[y];
+    // 准备对 dark_channel 做最小值滤波 (这里还没写加速的)
+    if(not accelerate) {
+        for(int i = 0;i < H; ++i) {
+            double* const min_row_ptr = min_dark_channel.data() + i * W;
+            for(int j = 0;j < W; ++j) {
+                double min_pixel = 1e7;
+                // 每个点, 找出它所在的 kernel 所有元素, 然后逐一比较
+                for(int x = 0;x < kernel_size; ++x) {
+                    // 获取 padded_I 中 kernel 这一行的指针
+                    double* const row_ptr = dark_channel.data() + (i + x) * W2 + j;
+                    for(int y = 0;y < kernel_size; ++y) if(min_pixel > row_ptr[y]) min_pixel = row_ptr[y];
+                }
+                min_row_ptr[j] = std::max(1 - min_pixel, t0);
             }
-            min_row_ptr[j] = std::max(1 - min_pixel, t0);
         }
+    } else {
+        // 这里分两个方向, 有点麻烦, 还得我自己 padding, 以后有时间再做吧
     }
     return min_dark_channel;
 }
 
 
-// 这里好像用 uchar 比较
-cv::Mat get_dark_channel(const cv::Mat& I, const int radius, const bool accelerate=true) {
+//  uchar 图找暗通道
+cv::Mat get_dark_channel(const cv::Mat& I, const int radius, const bool accelerate) {
     // 准备一些变量
     const uchar* const I_ptr = I.data;
     const int H = I.rows, W = I.cols;
@@ -160,7 +163,7 @@ cv::Mat get_dark_channel(const cv::Mat& I, const int radius, const bool accelera
 }
 
 
-std::vector<double> get_global_atmospheric_light(
+std::pair< std::vector<double>, std::vector<int> > get_global_atmospheric_light(
         const cv::Mat& I, const cv::Mat& I_dark, const double top_percent,
         const std::string sort_type="bucket_sort") {
     // 从 dark_channel 中, 选像素值前 0.1%, 首先要把所有点看一遍 ? 排序一把, 但这种其实可以用桶排序加速
@@ -214,9 +217,11 @@ std::vector<double> get_global_atmospheric_light(
             max_A[1] += I_ptr[p + 1];
             max_A[2] += I_ptr[p + 2];
         }
+        // 记录前 border 个元素在的地方
+        for(int i = 0;i < border; ++i) max_n[i] = pixels[length - 1 - i].second;
     }
     for(int i = 0;i < 3; ++i) max_A[i] /= border;
-    return max_A;
+    return {max_A, max_n};
 }
 
 
@@ -231,11 +236,43 @@ std::map<const std::string, cv::Mat> dark_channel_prior_dehaze(
     // 首先求 I 的暗通道图 I_dark  8ms
     const auto I_dark = get_dark_channel(I, radius, false);
     // 然后求全局大气光 A, 一个数, 需要汇总前 top_percent 的像素, 然后求出来  12ms
-    const auto A = get_global_atmospheric_light(I, I_dark, top_percent);
+    const auto A_results = get_global_atmospheric_light(I, I_dark, top_percent);
+    const auto& A = A_results.first;
     // 准备返回结果
     std::map<const std::string, cv::Mat> packed_results{{"dark_channel", I_dark}};
+    // 在这里画出来
+    if(return_visuals) {
+        auto I_circled = I.clone();
+        for(const auto pos : A_results.second) {
+            const int x = pos / W, y = pos % W;
+            cv::circle(I_circled, cv::Point(y, x), 4, CV_RGB(255, 0, 0), 0);
+        }
+        packed_results.emplace("A_points", I_circled);
+    }
     // 如果三通道的透射率分开计算
-    if(multi_T) {
+    if(not multi_T) {
+        // 原图 I 三通道分别除以 A, 再一起求一个 dark_channel
+        auto T = get_dark_channel_double(I, A, t0, radius);
+        packed_results.emplace("T", double2uchar(T, H, W));
+        // 是否要 guided_filter 精修下 ?
+        if(guided) {
+            cv::Mat gray_dehaze_image;
+            cv::cvtColor(I, gray_dehaze_image, cv::COLOR_BGR2GRAY);
+            const auto T_guided = guided_filter_with_gray(packed_results["T"], gray_dehaze_image, 12, 12, 1e-4);
+            T = uchar2double(T_guided); // 这个不能删
+            if(return_visuals) packed_results.emplace("T_guided", T_guided);
+        }
+        // A, T, I 都已经知道了, 现在开始求 J(x) = (I(x) - A) / T(x) + A
+        auto J = I.clone();
+        uchar* const dehazed_ptr = J.data;
+        for(int i = 0;i < length; ++i) {
+            const int _beg = 3 * i;
+            dehazed_ptr[_beg] = cv::saturate_cast<uchar>(double(I.data[_beg] - A[0]) / T[i] + A[0]);
+            dehazed_ptr[_beg + 1] = cv::saturate_cast<uchar>(double(I.data[_beg + 1] - A[1]) / T[i] + A[1]);
+            dehazed_ptr[_beg + 2] = cv::saturate_cast<uchar>(double(I.data[_beg + 2] - A[2]) / T[i] + A[2]);
+        }
+        packed_results.emplace("dehazed", J);
+    } else {
         // 现在我求出了三个通道的 A, 准备分别求三个通道的折射率 T = 1 - I_dark / A
         std::vector< std::vector<double> > T(3, std::vector<double>(length));
         const uchar* const I_dark_ptr = I_dark.data;
@@ -248,10 +285,8 @@ std::map<const std::string, cv::Mat> dark_channel_prior_dehaze(
         }
         std::vector<cv::Mat> T_uchar;
         // 是否要返回 T 的可视化结果
-        if(return_visuals) {
-            T_uchar = {double2uchar(T[0], H, W), double2uchar(T[1], H, W), double2uchar(T[2], H, W)};
-            for(int i = 0;i < 3; ++i) packed_results.emplace("T_" + std::to_string(i), T_uchar[i]);
-        }
+        T_uchar = {double2uchar(T[0], H, W), double2uchar(T[1], H, W), double2uchar(T[2], H, W)};
+        for(int i = 0;i < 3; ++i) packed_results.emplace("T_" + std::to_string(i), T_uchar[i]);
         // 是否要对投射图做精修
         if(guided) {
             cv::Mat gray_dehaze_image;
@@ -273,28 +308,6 @@ std::map<const std::string, cv::Mat> dark_channel_prior_dehaze(
             dehazed_ptr[_beg + 2] = cv::saturate_cast<uchar>(double(I.data[_beg + 2] - A[2]) / T[2][i] + A[2]);
         }
         packed_results.emplace("dehazed", dehazed);
-    } else {
-        // 原图 I 三通道分别除以 A, 再一起求一个 dark_channel
-        auto T = get_dark_channel(I, A, t0, radius);
-        if(return_visuals) packed_results.emplace("T", double2uchar(T, H, W));
-        // 是否要 guided_filter 精修下 ?
-        if(guided) {
-            cv::Mat gray_dehaze_image;
-            cv::cvtColor(I, gray_dehaze_image, cv::COLOR_BGR2GRAY);
-            const auto T_guided = guided_filter_with_gray(packed_results["T"], gray_dehaze_image, 12, 12, 1e-4);
-            T = uchar2double(T_guided);
-            if(return_visuals) packed_results.emplace("T_guided", T_guided);
-        }
-        // A, T, I 都已经知道了, 现在开始求 J(x) = (I(x) - A) / T(x) + A
-        auto J = I.clone();
-        uchar* const dehazed_ptr = J.data;
-        for(int i = 0;i < length; ++i) {
-            const int _beg = 3 * i;
-            dehazed_ptr[_beg] = cv::saturate_cast<uchar>(double(I.data[_beg] - A[0]) / T[i] + A[0]);
-            dehazed_ptr[_beg + 1] = cv::saturate_cast<uchar>(double(I.data[_beg + 1] - A[1]) / T[i] + A[1]);
-            dehazed_ptr[_beg + 2] = cv::saturate_cast<uchar>(double(I.data[_beg + 2] - A[2]) / T[i] + A[2]);
-        }
-        packed_results.emplace("dehazed", J);
     }
     return packed_results;
 }
