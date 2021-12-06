@@ -21,26 +21,26 @@ void dark_channel_prior_demo_6();
 
 int main() {
 
-//    // 找几张图象验证一下暗通道先验
+    // 找几张图象验证一下暗通道先验
 //    dark_prior_validation();
 //
-//    // 最简单的 demo, 只看去雾效果
+    // 最简单的 demo, 只看去雾效果
 //    dark_channel_prior_demo_1();
 //
-//    // 最开始的探索
+    // 最开始的探索
 //    dark_channel_prior_demo_2();
 //
-//    // 深度估计 + 错误的例子
+    // 深度估计 + 错误的例子
 //    dark_channel_prior_demo_3();
 //
-//    // 把估计 A 的那些点都抠出来
+    // 把估计 A 的那些点都抠出来
 //    dark_channel_prior_demo_4();
 
 //    // 是否使用 t0
-//    dark_channel_prior_demo_5();
+    dark_channel_prior_demo_5();
 
     // 天安门那张图为什么我会错
-    dark_channel_prior_demo_6();
+//    dark_channel_prior_demo_6();
 
     return 0;
 }
@@ -363,13 +363,21 @@ void dark_channel_prior_demo_5() {
         std::cout << "读取图像 " << image_path << " 失败 !\n";
         return;
     }
-    std::map<const std::string, cv::Mat> dehazed_result_1, dehazed_result_2;
-    dehazed_result_1 = dark_channel_prior_dehaze(haze_image, 10, 0.001, 0, 0.95, true, false, false);
-    dehazed_result_2 = dark_channel_prior_dehaze(haze_image, 10, 0.001, 0.2, 0.95, true, false, false);
-    // 展示
-    const auto comparison_results = cv_concat({haze_image, dehazed_result_1["dehazed"], dehazed_result_2["dehazed"]});
-    cv_show(comparison_results);
-    cv_write(comparison_results, "./images/output/t_1_t_0.png");
+    cv::Mat comparison_results;
+    std::map<const std::string, cv::Mat> dehazed_result;
+    for(int radius = 3; radius <= 15; radius += 2) {
+        run([&](){
+            dehazed_result = dark_channel_prior_dehaze(haze_image, radius, 0.001, 0.2, 0.95, true, false, true);
+        }, "t(x) = 1, with guide  ====>  ");
+        comparison_results = cv_concat({
+            dehazed_result["A_points"],
+            cv_stack({dehazed_result["dark_channel"], dehazed_result["dark_channel"], dehazed_result["dark_channel"]}),
+            cv_stack({dehazed_result["T"], dehazed_result["T"], dehazed_result["T"]}),
+            cv_stack({dehazed_result["T_guided"], dehazed_result["T_guided"], dehazed_result["T_guided"]}),
+            dehazed_result["dehazed"]});
+        cv_show(comparison_results);
+        cv_write(comparison_results, "./images/output/t_1_with_radius_grows" + std::to_string(radius) + ".png");
+    }
 }
 
 
