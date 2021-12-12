@@ -85,20 +85,44 @@ cv::Mat anisotropic_diffusion_denoise_gray(
     // 迭代
     for(int t = 0;t < iterations; ++t) {
         // 准备这次的结果
-        cv::Mat temp = denoised.clone();
+        cv::Mat temp = noise_image.clone();
         // 遍历每一个点
         for(int i = 0;i < H; ++i) {
             const uchar* const row_ptr = denoised.data + (1 + i) * W2 + 1;
-            uchar* const res_ptr = temp.data + (1 + i) * W2 + 1;
+            uchar* const res_ptr = temp.data + i * W;
             for(int j = 0;j < W; ++j) {
-                // 当前点求上下左右四个方向的散度
+//                // 当前点求上下左右四个方向的散度
+//                const double up = row_ptr[j - W2] - row_ptr[j];
+//                const double down = row_ptr[j + W2] - row_ptr[j];
+//                const double left = row_ptr[j - 1] - row_ptr[j];
+//                const double right = row_ptr[j + 1] - row_ptr[j];
+//                // 根据散度计算传导系数
+//                const double up_coefficient = fast_exp(-up * up * K2_inv);
+//                const double down_coefficient = fast_exp(-down * down * K2_inv);
+//                const double left_coefficient = fast_exp(-left * left * K2_inv);
+//                const double right_coefficient = fast_exp(-right * right * K2_inv);
+//                // 执行这个像素上的扩散
+//                res_ptr[j] = cv::saturate_cast<uchar>(row_ptr[j] + lambda * (
+//                        up * up_coefficient
+//                        + down * down_coefficient
+//                        + left * left_coefficient
+//                        + right * right_coefficient));
+                // 求八个方向的
                 const double up = row_ptr[j - W2] - row_ptr[j];
+                const double up_1 = row_ptr[j - W2 - 1] - row_ptr[j];
+                const double up_2 = row_ptr[j - W2 + 1] - row_ptr[j];
                 const double down = row_ptr[j + W2] - row_ptr[j];
+                const double down_1 = row_ptr[j + W2 - 1] - row_ptr[j];
+                const double down_2 = row_ptr[j + W2 + 1] - row_ptr[j];
                 const double left = row_ptr[j - 1] - row_ptr[j];
                 const double right = row_ptr[j + 1] - row_ptr[j];
                 // 根据散度计算传导系数
                 const double up_coefficient = fast_exp(-up * up * K2_inv);
+                const double up_1_coefficient = fast_exp(-up_1 * up_1 * K2_inv);
+                const double up_2_coefficient = fast_exp(-up_2 * up_2 * K2_inv);
                 const double down_coefficient = fast_exp(-down * down * K2_inv);
+                const double down_1_coefficient = fast_exp(-down_1 * down_1 * K2_inv);
+                const double down_2_coefficient = fast_exp(-down_2 * down_2 * K2_inv);
                 const double left_coefficient = fast_exp(-left * left * K2_inv);
                 const double right_coefficient = fast_exp(-right * right * K2_inv);
                 // 执行这个像素上的扩散
@@ -106,10 +130,14 @@ cv::Mat anisotropic_diffusion_denoise_gray(
                         up * up_coefficient
                         + down * down_coefficient
                         + left * left_coefficient
-                        + right * right_coefficient));
+                        + right * right_coefficient
+                        + up_1 * up_1_coefficient
+                        + up_2 * up_2_coefficient
+                        + down_1 * down_1_coefficient
+                        + down_2 * down_2_coefficient));
             }
         }
-        denoised = temp;
+        denoised = make_pad(temp, 1, 1);
     }
     return denoised(cv::Rect(1, 1, W, H));
 }
@@ -148,10 +176,10 @@ int main() {
     // cv::cvtColor(noise_image, noise_image, cv::COLOR_BGR2GRAY);
     cv::Mat denoised;
     run([&](){
-        denoised = anisotropic_diffusion_denoise_color(noise_image, 7, 10, 0.2);
+        denoised = anisotropic_diffusion_denoise_color(noise_image, 10, 12, 0.125);
     });
-    const auto comparison_results = cv_concat({noise_image, denoised});
+    const auto comparison_results = cv_concat({denoised});
     cv_show(comparison_results);
-    cv_write(comparison_results, "./images/output/demo.png");
+    cv_write(comparison_results, "./images/output/demo_2.png");
     return 0;
 }
