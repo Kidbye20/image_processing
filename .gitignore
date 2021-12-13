@@ -1,3 +1,5 @@
 *.exe
 */cmake-build-debug/
 *.m
+*.CR2
+DeepReverseToneMapping.pdf
