@@ -9,6 +9,8 @@
 #include <opencv2/imgproc.hpp>
 // self
 #include "faster_gaussi_filter.h"
+#include "laplace_of_gaussi.h"
+
 
 namespace {
     void run(const std::function<void()>& work=[]{}, const std::string message="") {
@@ -57,50 +59,6 @@ namespace {
     bool cv_write(const cv::Mat& source, const std::string save_path) {
         return cv::imwrite(save_path, source, std::vector<int>({cv::IMWRITE_PNG_COMPRESSION, 0}));
     }
-
-    cv::Mat make_pad(const cv::Mat &one_image, const int pad_H, const int pad_W) {
-        cv::Mat padded_image;
-        cv::copyMakeBorder(one_image, padded_image, pad_H, pad_H, pad_W, pad_W, cv::BORDER_REPLICATE);
-        return padded_image;
-    }
-
-    inline double fast_exp(const double y) {
-        double d;
-        *(reinterpret_cast<int*>(&d) + 0) = 0;
-        *(reinterpret_cast<int*>(&d) + 1) = static_cast<int>(1512775 * y + 1072632447);
-        return d;
-    }
-}
-
-
-
-
-
-cv::Mat laplace_detail_enhance(const cv::Mat& source) {
-    // 获取信息
-    const int H = source.rows;
-    const int W = source.cols;
-    // padding
-    const auto padded_image = make_pad(source, 1, 1);
-    const int W2 = padded_image.cols;
-    // 准备结果
-    auto result = source.clone();
-    // 开始滤波
-    for(int i = 0;i < H; ++i) {
-        const uchar* row_ptr = padded_image.data + (1 + i) * W2 + 1;
-        uchar* const res_ptr = result.data + i * W;
-        for(int j = 0;j < W; ++j) {
-            // 每个点, 找周围几个点, 算一下
-            // const uchar u = row_ptr[j - W2], d = row_ptr[j + W2], l = row_ptr[j - 1], r = row_ptr[j + 1];
-            // res_ptr[j] = cv::saturate_cast<uchar>(std::abs(u + d + l + r - 4 * row_ptr[j]));
-            const uchar u = row_ptr[j - W2], d = row_ptr[j + W2], l = row_ptr[j - 1], r = row_ptr[j + 1];
-            const uchar u_1 = row_ptr[j - W2], u_2 = row_ptr[j - 1], d_1 = row_ptr[j + W2], d_2 = row_ptr[j + 1];
-            double value = u + d + l + r + u_1 + u_2 + d_1 + d_2 - 8 * row_ptr[j];
-            if(value < 0) value = -value;
-            res_ptr[j] = cv::saturate_cast<uchar>(value);
-        }
-    }
-    return result;
 }
 
 
@@ -108,14 +66,16 @@ cv::Mat laplace_detail_enhance(const cv::Mat& source) {
 
 
 
-int main() {
-    std::cout << "opencv  :  " << CV_VERSION << std::endl;
 
-    std::string noise_path("../images/detail/a0041-IMG_4972.png");
+
+
+
+void demo_1() {
+    std::string noise_path("../images/detail/a0015-DSC_0081.png");
     auto noise_image = cv::imread(noise_path);
     if(noise_image.empty()) {
         std::cout << "读取图像 " << noise_path << " 失败 !" << std::endl;
-        return 0;
+        return;
     }
     //noise_image = cv_resize(noise_image, 512, 341);
     // 转成灰度图
@@ -124,11 +84,80 @@ int main() {
     // 先过一遍高斯滤波
     // noise_gray = faster_2_gaussi_filter_channel(noise_gray, 3, 0.1, 0.1);
     // 利用拉普拉斯检测边缘
-    auto details = laplace_detail_enhance(noise_gray);
+    auto details = laplace_extract_edges(noise_gray);
     cv_show(details);
     // 增强细节
     const auto comparison_results = cv_concat({noise_image, noise_image + cv_repeat(details)});
     cv_show(comparison_results);
     cv_write(comparison_results, "./images/output/demo_2.png");
+}
+
+
+
+void demo_2() {
+    const std::string image_path("../images/detail/a0025-kme_298.png");
+    auto origin_image = cv::imread(image_path);
+    if(origin_image.empty()) {
+        std::cout << "读取图像 " << image_path << " 失败 !" << std::endl;
+        return;
+    }
+    // BGR -> Gray
+    cv::cvtColor(origin_image, origin_image, cv::COLOR_BGR2GRAY);
+
+    // LOG 检测边缘
+    cv::Mat detected_result;
+    run([&](){
+        detected_result = laplace_of_gaussi(origin_image, 2, 0.7);
+    });
+
+    // 展示结果, 保存
+    const auto comparison_results = cv_concat({origin_image, detected_result});
+    cv_show(comparison_results);
+    cv_write(comparison_results, "./images/output/demo_2.png");
+}
+
+
+
+void demo_5() {
+    const std::string image_path("../images/detail/a0025-kme_298.png");
+    auto origin_image = cv::imread(image_path);
+    if(origin_image.empty()) {
+        std::cout << "读取图像 " << image_path << " 失败 !" << std::endl;
+        return;
+    }
+    // BGR -> Gray
+    cv::cvtColor(origin_image, origin_image, cv::COLOR_BGR2GRAY);
+
+    // LOG 检测边缘
+    cv::Mat detected_result;
+    run([&](){
+        detected_result = difference_of_gaussi(origin_image, 2, 0.7, 1.6);
+    });
+
+    // 展示结果, 保存
+    const auto comparison_results = cv_concat({origin_image, detected_result});
+    cv_show(comparison_results);
+    cv_write(comparison_results, "./images/output/demo_5.png");
+}
+
+
+
+int main() {
+    std::cout << "opencv  :  " << CV_VERSION << std::endl;
+
+    // Laplace 检测边缘
+    // demo_1();
+
+    // LOG
+    // demo_2();
+
+    // LOG uint8 损失精度的优化
+
+    // LOG 模板分离
+
+    // DOG 近似 LOG
+    demo_5();
+
+    // DOB 近似 LOG  Difference of boxes
     return 0;
 }
