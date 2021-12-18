@@ -20,7 +20,11 @@ cv::Mat laplace_of_gaussi_edge_detection(const cv::Mat& source, const int radius
 
 using keypoints_type = std::list<std::pair<double, double> >;
 
-std::pair< keypoints_type, keypoints_type > laplace_of_gaussi_keypoints_detection(const cv::Mat& source, const int radius=2, const std::vector< std::pair<double, double > > sigma_list={{0.3, 0.4}, {0.6, 0.7}, {0.7, 0.8}}, const double threshold=100);
+std::pair< keypoints_type, keypoints_type > difference_of_gaussi_keypoints_detection(
+        const cv::Mat& source,
+        const int radius=2,
+        const std::vector< double > sigma_list={0.3, 0.4, 0.5, 0.6},
+        const double threshold=3);
 
 #endif //GUIDED_FILTER_LAPLACE_OF_GAUSSI_H
 

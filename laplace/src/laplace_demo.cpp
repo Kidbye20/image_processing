@@ -118,7 +118,7 @@ void demo_2() {
 
 
 void demo_5() {
-    const std::string image_path("../images/detail/a0015-DSC_0081.png"); // a0015-DSC_0081.png  a0025-kme_298.png
+    const std::string image_path("../images/detail/a0032-jmac_MG_0266.png"); // a0015-DSC_0081.png  a0025-kme_298.png
     auto origin_image = cv::imread(image_path);
     if(origin_image.empty()) {
         std::cout << "读取图像 " << image_path << " 失败 !" << std::endl;
@@ -131,7 +131,8 @@ void demo_5() {
     // LOG 检测边缘
     std::pair<keypoints_type, keypoints_type > key_points;
     run([&](){
-         key_points = laplace_of_gaussi_keypoints_detection(origin_image, 3, {{0.3, 0.4}, {0.6, 0.7}, {0.7, 0.8}}, 2);
+         key_points = difference_of_gaussi_keypoints_detection(
+                 origin_image, 3, {0.3, 0.4, 0.5, 0.6}, 6);
     });
 
     // 极大值

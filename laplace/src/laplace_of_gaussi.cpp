@@ -14,6 +14,15 @@ namespace {
         return padded_image;
     }
 
+    cv::Mat double2uchar(const std::vector<double>& double_image, const int H, const int W) {
+        cv::Mat origin = cv::Mat::zeros(H, W, CV_8UC1);
+        const int length = H * W;
+        for(int i = 0;i < length; ++i) {
+            origin.data[i] = cv::saturate_cast<uchar>(30 * std::abs(double_image[i]));
+        }
+        return origin;
+    }
+
     inline double fast_exp(const double y) {
         double d;
         *(reinterpret_cast<int*>(&d) + 0) = 0;
@@ -25,6 +34,13 @@ namespace {
         cv::imshow(info, one_image);
         cv::waitKey(0);
         cv::destroyAllWindows();
+    }
+
+    cv::Mat cv_concat(const std::vector<cv::Mat> images, const bool v=false) {
+        cv::Mat result;
+        if(not v) cv::hconcat(images, result);
+        else cv::vconcat(images, result);
+        return result;
     }
 }
 
@@ -167,70 +183,75 @@ cv::Mat laplace_of_gaussi_edge_detection(const cv::Mat& source, const int radius
 
 
 // 单通道
-std::pair< keypoints_type, keypoints_type > laplace_of_gaussi_keypoints_detection(const cv::Mat& source, const int radius, const std::vector< std::pair<double, double > > sigma_list, const double threshold) {
+std::pair< keypoints_type, keypoints_type > difference_of_gaussi_keypoints_detection(
+        const cv::Mat& source, const int radius,
+        const std::vector< double > sigma_list,
+        const double threshold) {
     const int C = source.channels();
     if(C != 1) {
         std::cout << "只支持单通道图像 !" << std::endl;
         return std::pair< keypoints_type, keypoints_type >();
     }
     // 四次高斯模糊, 3 张 DOG 图
-    assert(sigma_list.size() == 3);
-
-    // 把 source 转变成 double 类型
-    cv::Mat source_double;
-    source.convertTo(source_double, CV_64FC1);
+    assert(sigma_list.size() == 4);
 
     // 根据 sigma_list 的方差分别做高斯模糊
-    cv::Mat gaussi_down_1, gaussi_down_2, gaussi_mid_1, gaussi_mid_2, gaussi_up_1, gaussi_up_2;
-    cv::GaussianBlur(source_double, gaussi_down_1, cv::Size(5, 5), sigma_list[0].first, sigma_list[0].first);
-    cv::GaussianBlur(source_double, gaussi_down_2, cv::Size(5, 5), sigma_list[0].second, sigma_list[0].second);
-    cv::GaussianBlur(source_double, gaussi_mid_1, cv::Size(5, 5), sigma_list[1].first, sigma_list[1].first);
-    cv::GaussianBlur(source_double, gaussi_mid_2, cv::Size(5, 5), sigma_list[1].second, sigma_list[1].second);
-    cv::GaussianBlur(source_double, gaussi_up_1, cv::Size(5, 5), sigma_list[2].first, sigma_list[2].first);
-    cv::GaussianBlur(source_double, gaussi_up_2, cv::Size(5, 5), sigma_list[2].second, sigma_list[2].second);
-
+    const int kernel_size = (radius << 1) + 1;
+    const auto gaussi_1 = faster_2_gaussi_filter_channel(source, kernel_size, sigma_list[0], sigma_list[0]);
+    const auto gaussi_2 = faster_2_gaussi_filter_channel(source, kernel_size, sigma_list[1], sigma_list[1]);
+    const auto gaussi_3 = faster_2_gaussi_filter_channel(source, kernel_size, sigma_list[2], sigma_list[2]);
+    const auto gaussi_4 = faster_2_gaussi_filter_channel(source, kernel_size, sigma_list[3], sigma_list[3]);
+    cv_show(cv_concat({gaussi_1, gaussi_2, gaussi_3, gaussi_4}));
     // 分别求 DOG
-    cv::Mat DOG_up, DOG_mid, DOG_down;
-    DOG_down = gaussi_down_1 - gaussi_down_2;
-    DOG_mid = gaussi_mid_1 - gaussi_mid_2;
-    DOG_up = gaussi_up_1 - gaussi_up_2;
+    const int H = source.rows;
+    const int W = source.cols;
+    const int length = H * W;
+    std::vector<double> DOG_down(length), DOG_mid(length), DOG_up(length);
+    for(int i = 0;i < length; ++i) DOG_down[i] = gaussi_1.data[i] - gaussi_2.data[i];
+    for(int i = 0;i < length; ++i) DOG_mid[i] = gaussi_2.data[i] - gaussi_3.data[i];
+    for(int i = 0;i < length; ++i) DOG_up[i] = gaussi_3.data[i] - gaussi_4.data[i];
 
-    // 准备一个结果
+    cv_show(cv_concat({double2uchar(DOG_down, H, W), double2uchar(DOG_mid, H, W), double2uchar(DOG_up, H, W)}));
+
+    // 准备结果, 返回极大值与极小值的点
     keypoints_type max_points;
     keypoints_type min_points;
 
     // 三层之间找极值
-    const int H = source.rows;
-    const int W = source.cols;
     for(int i = 1;i < H - 1; ++i) {
+        double* const down = DOG_down.data() + i * W;
+        double* const mid = DOG_mid.data() + i * W;
+        double* const up = DOG_up.data() + i * W;
         for(int j = 1;j < W - 1; ++j) {
             // 中间这个点的值, 和最近的 26 个点比较大小
-            const auto center = DOG_mid.at<double>(i, j);
-            // 是否最大值
-            if(center > DOG_mid.at<double>(i, j - 1) and center > DOG_mid.at<double>(i, j + 1) and
-               center > DOG_mid.at<double>(i - 1, j - 1) and center > DOG_mid.at<double>(i - 1, j) and center > DOG_mid.at<double>(i - 1, j + 1) and
-               center > DOG_mid.at<double>(i + 1, j - 1) and center > DOG_mid.at<double>(i + 1, j) and center > DOG_mid.at<double>(i + 1, j + 1) and
-               center > DOG_down.at<double>(i, j - 1) and center > DOG_down.at<double>(i, j) and center > DOG_down.at<double>(i, j + 1) and
-               center > DOG_down.at<double>(i - 1, j - 1) and center > DOG_down.at<double>(i - 1, j) and center > DOG_down.at<double>(i - 1, j + 1) and
-               center > DOG_down.at<double>(i + 1, j - 1) and center > DOG_down.at<double>(i + 1, j) and center > DOG_down.at<double>(i + 1, j + 1) and
-               center > DOG_up.at<double>(i, j - 1) and center > DOG_up.at<double>(i, j) and center > DOG_up.at<double>(i, j + 1) and
-               center > DOG_up.at<double>(i - 1, j - 1) and center > DOG_up.at<double>(i - 1, j) and center > DOG_up.at<double>(i - 1, j + 1) and
-               center > DOG_up.at<double>(i + 1, j - 1) and center > DOG_up.at<double>(i + 1, j) and center > DOG_up.at<double>(i + 1, j + 1)) {
-                if(center > 4)
-                    max_points.emplace_back(i, j);
+            const auto center = mid[j];
+            // 极大值
+            if(center > mid[j - 1] and center > mid[j + 1] and
+               center > mid[j - 1 - W] and center > mid[j - W] and center > mid[j + 1 - W] and
+               center > mid[j - 1 + W] and center > mid[j + W] and center > mid[j + 1 + W] and
+
+               center > down[j - 1] and center > down[j] and center > down[j + 1] and
+               center > down[j - 1 - W] and center > down[j - W] and center > down[j + 1 - W] and
+               center > down[j - 1 + W] and center > down[j + W] and center > down[j + 1 + W] and
+
+               center > up[j - 1] and center > up[j] and center > up[j + 1] and
+               center > up[j - 1 - W] and center > up[j - W] and center > up[j + 1 - W] and
+               center > up[j - 1 + W] and center > up[j + W] and center > up[j + 1 + W]) {
+                if(std::abs(center) > threshold) max_points.emplace_back(i, j);
             }
-            // 是否极小值
-            if(center < DOG_mid.at<double>(i, j - 1) and center < DOG_mid.at<double>(i, j + 1) and
-               center < DOG_mid.at<double>(i - 1, j - 1) and center < DOG_mid.at<double>(i - 1, j) and center < DOG_mid.at<double>(i - 1, j + 1) and
-               center < DOG_mid.at<double>(i + 1, j - 1) and center < DOG_mid.at<double>(i + 1, j) and center < DOG_mid.at<double>(i + 1, j + 1) and
-               center < DOG_down.at<double>(i, j - 1) and center < DOG_down.at<double>(i, j) and center < DOG_down.at<double>(i, j + 1) and
-               center < DOG_down.at<double>(i - 1, j - 1) and center < DOG_down.at<double>(i - 1, j) and center < DOG_down.at<double>(i - 1, j + 1) and
-               center < DOG_down.at<double>(i + 1, j - 1) and center < DOG_down.at<double>(i + 1, j) and center < DOG_down.at<double>(i + 1, j + 1) and
-               center < DOG_up.at<double>(i, j - 1) and center < DOG_up.at<double>(i, j) and center < DOG_up.at<double>(i, j + 1) and
-               center < DOG_up.at<double>(i - 1, j - 1) and center < DOG_up.at<double>(i - 1, j) and center < DOG_up.at<double>(i - 1, j + 1) and
-               center < DOG_up.at<double>(i + 1, j - 1) and center < DOG_up.at<double>(i + 1, j) and center < DOG_up.at<double>(i + 1, j + 1)) {
-                if(center < -4)
-                    min_points.emplace_back(i, j);
+            // 极小值
+            if(center < mid[j - 1] and center < mid[j + 1] and
+               center < mid[j - 1 - W] and center < mid[j - W] and center < mid[j + 1 - W] and
+               center < mid[j - 1 + W] and center < mid[j + W] and center < mid[j + 1 + W] and
+
+               center < down[j - 1] and center < down[j] and center < down[j + 1] and
+               center < down[j - 1 - W] and center < down[j - W] and center < down[j + 1 - W] and
+               center < down[j - 1 + W] and center < down[j + W] and center < down[j + 1 + W] and
+
+               center < up[j - 1] and center < up[j] and center < up[j + 1] and
+               center < up[j - 1 - W] and center < up[j - W] and center < up[j + 1 - W] and
+               center < up[j - 1 + W] and center < up[j + W] and center < up[j + 1 + W]) {
+                if(std::abs(center) > threshold) min_points.emplace_back(i, j);
             }
         }
     }
