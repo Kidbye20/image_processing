@@ -44,9 +44,10 @@ namespace {
         return result;
     }
 
-    cv::Mat cv_concat(const std::vector<cv::Mat> images) {
+    cv::Mat cv_concat(const std::vector<cv::Mat> images, const bool v=false) {
         cv::Mat result;
-        cv::hconcat(images, result);
+        if(not v) cv::hconcat(images, result);
+        else cv::vconcat(images, result);
         return result;
     }
 
@@ -71,7 +72,7 @@ namespace {
 
 
 void demo_1() {
-    std::string noise_path("../images/detail/a0015-DSC_0081.png");
+    std::string noise_path("../images/detail/a0118-20051223_103622__MG_0617_noisy.png");
     auto noise_image = cv::imread(noise_path);
     if(noise_image.empty()) {
         std::cout << "读取图像 " << noise_path << " 失败 !" << std::endl;
@@ -85,17 +86,16 @@ void demo_1() {
     // noise_gray = faster_2_gaussi_filter_channel(noise_gray, 3, 0.1, 0.1);
     // 利用拉普拉斯检测边缘
     auto details = laplace_extract_edges(noise_gray);
-    cv_show(details);
     // 增强细节
-    const auto comparison_results = cv_concat({noise_image, noise_image + cv_repeat(details)});
+    const auto comparison_results = cv_concat({noise_image, cv_repeat(details)}, true);
     cv_show(comparison_results);
-    cv_write(comparison_results, "./images/output/demo_2.png");
+    cv_write(comparison_results, "./images/output/demo_1_noisy.png");
 }
 
 
 
 void demo_2() {
-    const std::string image_path("../images/detail/a0025-kme_298.png");
+    const std::string image_path("../images/detail/a0118-20051223_103622__MG_0617.png"); // a0015-DSC_0081.png  a0025-kme_298.png
     auto origin_image = cv::imread(image_path);
     if(origin_image.empty()) {
         std::cout << "读取图像 " << image_path << " 失败 !" << std::endl;
@@ -107,37 +107,45 @@ void demo_2() {
     // LOG 检测边缘
     cv::Mat detected_result;
     run([&](){
-        detected_result = laplace_of_gaussi(origin_image, 2, 0.7);
+         detected_result = laplace_of_gaussi_edge_detection(origin_image, 3, 0.95, 2);
     });
 
     // 展示结果, 保存
-    const auto comparison_results = cv_concat({origin_image, detected_result});
+    auto comparison_results = cv_concat({detected_result});
     cv_show(comparison_results);
-    cv_write(comparison_results, "./images/output/demo_2.png");
+    cv_write(comparison_results, "./images/output/LOG_edge_detection_2.png");
 }
 
 
-
 void demo_5() {
-    const std::string image_path("../images/detail/a0025-kme_298.png");
+    const std::string image_path("../images/detail/a0015-DSC_0081.png"); // a0015-DSC_0081.png  a0025-kme_298.png
     auto origin_image = cv::imread(image_path);
     if(origin_image.empty()) {
         std::cout << "读取图像 " << image_path << " 失败 !" << std::endl;
         return;
     }
+    cv::Mat detected_result = origin_image.clone();
     // BGR -> Gray
     cv::cvtColor(origin_image, origin_image, cv::COLOR_BGR2GRAY);
 
     // LOG 检测边缘
-    cv::Mat detected_result;
+    std::pair<keypoints_type, keypoints_type > key_points;
     run([&](){
-        detected_result = difference_of_gaussi(origin_image, 2, 0.7, 1.6);
+         key_points = laplace_of_gaussi_keypoints_detection(origin_image, 3, {{0.3, 0.4}, {0.6, 0.7}, {0.7, 0.8}}, 2);
     });
 
+    // 极大值
+    for(const auto point : key_points.first)
+        cv::circle(detected_result, cv::Point(point.second, point.first), 3, CV_RGB(255, 0, 0));
+
+    // 极小值
+    for(const auto point : key_points.second)
+        cv::circle(detected_result, cv::Point(point.second, point.first), 3, CV_RGB(0, 255, 0));
+
     // 展示结果, 保存
-    const auto comparison_results = cv_concat({origin_image, detected_result});
+    auto comparison_results = cv_concat({detected_result});
     cv_show(comparison_results);
-    cv_write(comparison_results, "./images/output/demo_5.png");
+    cv_write(comparison_results, "./images/output/LOG_keypoints_detection.png");
 }
 
 
@@ -155,7 +163,7 @@ int main() {
 
     // LOG 模板分离
 
-    // DOG 近似 LOG
+    // 检测关键点
     demo_5();
 
     // DOB 近似 LOG  Difference of boxes
