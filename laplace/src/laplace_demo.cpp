@@ -73,21 +73,21 @@ namespace {
 
 void demo_1() {
     std::string noise_path("../images/detail/a0118-20051223_103622__MG_0617_noisy.png");
-    auto noise_image = cv::imread(noise_path);
-    if(noise_image.empty()) {
+    auto origin_image = cv::imread(noise_path);
+    if(origin_image.empty()) {
         std::cout << "读取图像 " << noise_path << " 失败 !" << std::endl;
         return;
     }
-    //noise_image = cv_resize(noise_image, 512, 341);
+    //origin_image = cv_resize(origin_image, 512, 341);
     // 转成灰度图
     cv::Mat noise_gray;
-    cv::cvtColor(noise_image, noise_gray, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(origin_image, noise_gray, cv::COLOR_BGR2GRAY);
     // 先过一遍高斯滤波
     // noise_gray = faster_2_gaussi_filter_channel(noise_gray, 3, 0.1, 0.1);
     // 利用拉普拉斯检测边缘
     auto details = laplace_extract_edges(noise_gray);
     // 增强细节
-    const auto comparison_results = cv_concat({noise_image, cv_repeat(details)}, true);
+    const auto comparison_results = cv_concat({origin_image, cv_repeat(details)}, true);
     cv_show(comparison_results);
     cv_write(comparison_results, "./images/output/demo_1_noisy.png");
 }
@@ -95,7 +95,7 @@ void demo_1() {
 
 
 void demo_2() {
-    const std::string image_path("../images/detail/a0118-20051223_103622__MG_0617.png"); // a0015-DSC_0081.png  a0025-kme_298.png
+    const std::string image_path("../images/detail/a0015-DSC_0081.png"); // a0015-DSC_0081.png  a0025-kme_298.png
     auto origin_image = cv::imread(image_path);
     if(origin_image.empty()) {
         std::cout << "读取图像 " << image_path << " 失败 !" << std::endl;
@@ -107,7 +107,7 @@ void demo_2() {
     // LOG 检测边缘
     cv::Mat detected_result;
     run([&](){
-         detected_result = laplace_of_gaussi_edge_detection(origin_image, 3, 0.95, 2);
+         detected_result = laplace_of_gaussi_edge_detection(origin_image, 3, 0.9, 2);
     });
 
     // 展示结果, 保存
@@ -151,6 +151,31 @@ void demo_5() {
 
 
 
+
+void demo_6() {
+    std::string noise_path("../images/detail/blob_2.png");
+    auto origin_image = cv::imread(noise_path);
+    if(origin_image.empty()) {
+        std::cout << "读取图像 " << noise_path << " 失败 !" << std::endl;
+        return;
+    }
+    // 转成灰度图
+    cv::Mat origin_gray;
+    cv::cvtColor(origin_image, origin_gray, cv::COLOR_BGR2GRAY);
+    // 先过一遍高斯滤波
+    // 利用  LOG  检测 blob
+    auto key_points = laplace_of_gaussi_keypoints_detection(origin_gray, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, 120);
+
+    for(const auto point : key_points)
+        cv::circle(origin_image, cv::Point(point.second, point.first), 20, CV_RGB(255, 0, 0));
+
+    // 增强细节
+    const auto comparison_results = cv_concat({origin_image});
+    cv_show(comparison_results);
+    cv_write(comparison_results, "./images/output/LOG_keypoints.png");
+}
+
+
 int main() {
     std::cout << "opencv  :  " << CV_VERSION << std::endl;
 
@@ -158,14 +183,17 @@ int main() {
     // demo_1();
 
     // LOG
-    // demo_2();
+    demo_2();
 
     // LOG uint8 损失精度的优化
 
     // LOG 模板分离
 
     // 检测关键点
-    demo_5();
+    // demo_5();
+
+    // LOG 检测关键点
+    // demo_6();
 
     // DOB 近似 LOG  Difference of boxes
     return 0;

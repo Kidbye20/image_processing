@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <iomanip>
 #include <iostream>
+#include <algorithm>
 // self
 #include "laplace_of_gaussi.h"
 
@@ -81,7 +82,7 @@ cv::Mat laplace_extract_edges(const cv::Mat& source) {
 
 
 
-std::vector<double> laplace_of_gaussi(const cv::Mat& source, const int radius, const double sigma) {
+std::vector<double> laplace_of_gaussi(const cv::Mat& source, const int radius, const double sigma, const bool norm=false) {
     // padding 处理边缘
     const auto padded_image = make_pad(source, radius, radius);
     const int W2 = padded_image.cols;
@@ -89,7 +90,7 @@ std::vector<double> laplace_of_gaussi(const cv::Mat& source, const int radius, c
     const int window_len = (radius << 1) + 1;
     const int window_size = window_len * window_len;
     const double sigma_2 = sigma * sigma;
-    const double sigma_6 = sigma_2 * sigma_2 * sigma_2;
+    const double sigma_6 = norm ? sigma_2 * sigma_2 : sigma_2 * sigma_2 * sigma_2;
     double LOG[window_size];
     int LOG_offset[window_size];
     int offset = 0;
@@ -101,12 +102,13 @@ std::vector<double> laplace_of_gaussi(const cv::Mat& source, const int radius, c
             ++offset;
         }
     }
-    for(int i = 0;i < offset; ++i) {
+
+    /*
+     *
+     * for(int i = 0;i < offset; ++i) {
         std::cout << std::setprecision(3) << LOG[i] << " ";
         if((i + 1) % window_len == 0) std::cout << "\n";
     }
-    /*
-     *
      0.001 0.011  0.044  0.067  0.044 0.011 0.001
      0.011 0.100  0.272  0.326  0.272 0.100 0.011
      0.044 0.272  0.088 -0.629  0.088 0.272 0.044
@@ -126,7 +128,7 @@ std::vector<double> laplace_of_gaussi(const cv::Mat& source, const int radius, c
     // LOG 模板扫过
     std::vector<double> LOG_result(length, 0);
     for(int i = 0;i < H; ++i) {
-        const uchar* const row_ptr = padded_image.data + i * W2;
+        const uchar* const row_ptr = padded_image.data + (radius + i) * W2 + radius;
         double* const res_ptr = LOG_result.data() + i * W;
         for(int j = 0;j < W; ++j) {
             // 开始卷积
@@ -177,6 +179,69 @@ cv::Mat laplace_of_gaussi_edge_detection(const cv::Mat& source, const int radius
         }
     }
     return result_image;
+}
+
+
+
+
+keypoints_type laplace_of_gaussi_keypoints_detection(
+        const cv::Mat& source, const std::vector<int>& sigma_list, const int num_blobs) {
+
+    const int sigma_nums = sigma_list.size();
+    // 留一个数组保存所有尺度下的 LOG 结果
+    std::vector< std::vector<double> > LOG_octaves;
+    for(int i = 0;i < sigma_nums; ++i)
+        LOG_octaves.emplace_back(laplace_of_gaussi(source, std::floor(sigma_list[i] * 3), sigma_list[i], true));
+    // 开始检测不同尺度下的极值点
+    const int H = source.rows;
+    const int W = source.cols;
+    // 保留所有可能的关键点
+    std::vector< std::pair<double, std::pair<int, int> > > all_keypoints;
+    for(int i = 1;i < sigma_nums - 1; ++i) {
+        double* const down = LOG_octaves[i - 1].data() + i * W;
+        double* const mid = LOG_octaves[i].data() + i * W;
+        double* const up = LOG_octaves[i + 1].data() + i * W;
+        for(int j = 1;j < W - 1; ++j) {
+            // 中间这个点的值, 和最近的 26 个点比较大小
+            const auto center = mid[j];
+            // 极大值
+            if(center > mid[j - 1] and center > mid[j + 1] and
+               center > mid[j - 1 - W] and center > mid[j - W] and center > mid[j + 1 - W] and
+               center > mid[j - 1 + W] and center > mid[j + W] and center > mid[j + 1 + W] and
+
+               center > down[j - 1] and center > down[j] and center > down[j + 1] and
+               center > down[j - 1 - W] and center > down[j - W] and center > down[j + 1 - W] and
+               center > down[j - 1 + W] and center > down[j + W] and center > down[j + 1 + W] and
+
+               center > up[j - 1] and center > up[j] and center > up[j + 1] and
+               center > up[j - 1 - W] and center > up[j - W] and center > up[j + 1 - W] and
+               center > up[j - 1 + W] and center > up[j + W] and center > up[j + 1 + W]) {
+                // 记录这个点
+                all_keypoints.emplace_back(std::abs(center), std::make_pair(i, j));
+            }
+            // 极小值
+            else if(center < mid[j - 1] and center < mid[j + 1] and
+               center < mid[j - 1 - W] and center < mid[j - W] and center < mid[j + 1 - W] and
+               center < mid[j - 1 + W] and center < mid[j + W] and center < mid[j + 1 + W] and
+
+               center < down[j - 1] and center < down[j] and center < down[j + 1] and
+               center < down[j - 1 - W] and center < down[j - W] and center < down[j + 1 - W] and
+               center < down[j - 1 + W] and center < down[j + W] and center < down[j + 1 + W] and
+
+               center < up[j - 1] and center < up[j] and center < up[j + 1] and
+               center < up[j - 1 - W] and center < up[j - W] and center < up[j + 1 - W] and
+               center < up[j - 1 + W] and center < up[j + W] and center < up[j + 1 + W]) {
+                all_keypoints.emplace_back(std::abs(center), std::make_pair(i, j));
+            }
+        }
+    }
+    std::cout << all_keypoints.size() << std::endl;
+    // 对所有潜在的关键点继续排序
+    std::sort(all_keypoints.begin(), all_keypoints.end());
+    // 选取响应最大的 num_blobs 个
+    keypoints_type keypoints;
+    std::cout << all_keypoints.size() << std::endl;
+    return keypoints_type();
 }
 
 

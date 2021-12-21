@@ -80,7 +80,7 @@ void demo_1() {
     cv::Mat noise_gray;
     cv::cvtColor(noise_image, noise_gray, cv::COLOR_BGR2GRAY);
     // canny 算法
-    auto details = canny(noise_gray, 30, 50);
+    auto details = canny(noise_gray, 60, 100);
     // 增强细节
     const auto comparison_results = cv_concat({noise_image, cv_repeat(details)}, false);
     cv_show(comparison_results);

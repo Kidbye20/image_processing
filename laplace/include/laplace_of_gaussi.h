@@ -26,5 +26,11 @@ std::pair< keypoints_type, keypoints_type > difference_of_gaussi_keypoints_detec
         const std::vector< double > sigma_list={0.3, 0.4, 0.5, 0.6},
         const double threshold=3);
 
+
+keypoints_type laplace_of_gaussi_keypoints_detection(
+        const cv::Mat& source,
+        const std::vector<int>& sigma_list={1,2,3},
+        const int num_blobs=120);
+
 #endif //GUIDED_FILTER_LAPLACE_OF_GAUSSI_H
 

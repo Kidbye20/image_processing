@@ -116,7 +116,6 @@ std::vector<double> non_maximization_suppress(const int H, const int W, const st
         }
     }
     cv_show(double2uchar<double>(nms_result, H, W));
-    // 遍历每一个点,
     return nms_result;
 }
 
@@ -137,9 +136,43 @@ cv::Mat double_threshold_filter(const int H, const int W, const std::vector<doub
             else if(nms_ptr[j] > low_threshold) res_ptr[j] = 128;
         }
     }
+    cv_show(refined);
     for(int i = 1; i < H - 1; ++i) {
         uchar* const res_ptr = refined.data + i * W;
         for(int j = 1;j < W - 1; ++j) {
+            if(res_ptr[j] == 128) {
+                if(res_ptr[j - 1] == 255 or res_ptr[j + 1] == 255 or
+                   res_ptr[j - 1 - W] == 255 or res_ptr[j - W] == 255 or res_ptr[j + 1 - W] == 255 or
+                   res_ptr[j - 1 + W] == 255 or res_ptr[j + W] == 255 or res_ptr[j + 1 + W] == 255)
+                    res_ptr[j] = 255;
+            }
+        }
+    }
+    for(int i = 1; i < H - 1; ++i) {
+        uchar* const res_ptr = refined.data + i * W;
+        for(int j = W - 2;j > 0; --j) {
+            if(res_ptr[j] == 128) {
+                if(res_ptr[j - 1] == 255 or res_ptr[j + 1] == 255 or
+                   res_ptr[j - 1 - W] == 255 or res_ptr[j - W] == 255 or res_ptr[j + 1 - W] == 255 or
+                   res_ptr[j - 1 + W] == 255 or res_ptr[j + W] == 255 or res_ptr[j + 1 + W] == 255)
+                    res_ptr[j] = 255;
+            }
+        }
+    }
+    for(int i = H - 2; i >= 1; --i) {
+        uchar* const res_ptr = refined.data + i * W;
+        for(int j = 1;j < W - 1; ++j) {
+            if(res_ptr[j] == 128) {
+                if(res_ptr[j - 1] == 255 or res_ptr[j + 1] == 255 or
+                   res_ptr[j - 1 - W] == 255 or res_ptr[j - W] == 255 or res_ptr[j + 1 - W] == 255 or
+                   res_ptr[j - 1 + W] == 255 or res_ptr[j + W] == 255 or res_ptr[j + 1 + W] == 255)
+                    res_ptr[j] = 255;
+            }
+        }
+    }
+    for(int i = H - 2; i >= 1; --i) {
+        uchar* const res_ptr = refined.data + i * W;
+        for(int j = W - 2;j >= 1; --j) {
             if(res_ptr[j] == 128) {
                 if(res_ptr[j - 1] == 255 or res_ptr[j + 1] == 255 or
                    res_ptr[j - 1 - W] == 255 or res_ptr[j - W] == 255 or res_ptr[j + 1 - W] == 255 or
@@ -163,7 +196,7 @@ cv::Mat canny(const cv::Mat& source, const double low_threshold, const double hi
     const auto gaussi_result = faster_2_gaussi_filter_channel(source, 5, 1.2, 1.2);
     cv_show(cv_concat({source, gaussi_result}));
     // Sobel 算子计算每个点的梯度大小和方向
-    const auto gradients_results = sobel_compute(gaussi_result);
+    const auto gradients_results = sobel_compute(source);
     // 非极大化抑制
     const auto nms_result = non_maximization_suppress(source.rows, source.cols, gradients_results.first, gradients_results.second);
     // 双阈值过滤, 连接边缘
