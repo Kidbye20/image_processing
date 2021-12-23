@@ -26,11 +26,25 @@ std::pair< keypoints_type, keypoints_type > difference_of_gaussi_keypoints_detec
         const std::vector< double > sigma_list={0.3, 0.4, 0.5, 0.6},
         const double threshold=3);
 
+// 分别记录  响应值, 对应的尺度 or sigma, 两个坐标
+using blob_type = std::vector< std::tuple<double, double, int, int> >;
 
-keypoints_type laplace_of_gaussi_keypoints_detection(
+blob_type laplace_of_gaussi_blob_detection(
         const cv::Mat& source,
-        const std::vector<int>& sigma_list={1,2,3},
+        const double init_sigma=2,
+        const double k=1.414,
+        const int scales=9,
+        const double threshold=0.3,
         const int num_blobs=120);
 
+
+
+void laplace_of_gaussi_blob_detection_single_scale(
+        const cv::Mat& source,
+        const double init_sigma=2,
+        const double k=1.414,
+        const int scales=9,
+        const double threshold=0.3,
+        const int num_blobs=120);
 #endif //GUIDED_FILTER_LAPLACE_OF_GAUSSI_H
 

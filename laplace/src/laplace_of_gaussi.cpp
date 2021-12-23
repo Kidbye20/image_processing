@@ -102,7 +102,6 @@ std::vector<double> laplace_of_gaussi(const cv::Mat& source, const int radius, c
             ++offset;
         }
     }
-
     /*
      *
      * for(int i = 0;i < offset; ++i) {
@@ -183,7 +182,7 @@ cv::Mat laplace_of_gaussi_edge_detection(const cv::Mat& source, const int radius
 
 
 
-
+/*
 keypoints_type laplace_of_gaussi_keypoints_detection(
         const cv::Mat& source, const std::vector<int>& sigma_list, const int num_blobs) {
 
@@ -243,7 +242,7 @@ keypoints_type laplace_of_gaussi_keypoints_detection(
     std::cout << all_keypoints.size() << std::endl;
     return keypoints_type();
 }
-
+*/
 
 
 

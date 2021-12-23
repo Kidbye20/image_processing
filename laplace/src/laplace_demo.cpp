@@ -162,17 +162,32 @@ void demo_6() {
     // 转成灰度图
     cv::Mat origin_gray;
     cv::cvtColor(origin_image, origin_gray, cv::COLOR_BGR2GRAY);
-    // 先过一遍高斯滤波
+
     // 利用  LOG  检测 blob
-    auto key_points = laplace_of_gaussi_keypoints_detection(origin_gray, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, 120);
+    auto blobs = laplace_of_gaussi_blob_detection(origin_gray, 1. / 1.414, 1.414, 10, 0.3, 400);
 
-    for(const auto point : key_points)
-        cv::circle(origin_image, cv::Point(point.second, point.first), 20, CV_RGB(255, 0, 0));
+    for(const auto item : blobs) {
+        const int cur_scale = std::get<1>(item);
+        cv::circle(origin_image, cv::Point(std::get<3>(item), std::get<2>(item)), int(cur_scale * 1.414), CV_RGB(255, 0, 0), 1);
+    }
 
-    // 增强细节
+    // 展示
     const auto comparison_results = cv_concat({origin_image});
     cv_show(comparison_results);
-    cv_write(comparison_results, "./images/output/LOG_keypoints.png");
+    cv_write(comparison_results, "./images/output/LOG_keypoints_3.png");
+}
+
+
+void demo_7() {
+    std::string noise_path("../images/detail/blob_2.png");
+    auto origin_image = cv::imread(noise_path);
+    if(origin_image.empty()) {
+        std::cout << "读取图像 " << noise_path << " 失败 !" << std::endl;
+        return;
+    }
+
+    // 利用  LOG  检测 blob
+    laplace_of_gaussi_blob_detection_single_scale(origin_image, 1. / 1.414, 1.414, 12, 0.3, 400);
 }
 
 
@@ -183,7 +198,7 @@ int main() {
     // demo_1();
 
     // LOG
-    demo_2();
+    // demo_2();
 
     // LOG uint8 损失精度的优化
 
@@ -193,7 +208,10 @@ int main() {
     // demo_5();
 
     // LOG 检测关键点
-    // demo_6();
+    demo_6();
+
+    // 验证单尺度下的
+    // demo_7();
 
     // DOB 近似 LOG  Difference of boxes
     return 0;

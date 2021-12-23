@@ -15,7 +15,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/include/)
 
 # 添加可执行文件
-add_executable(guided_filter src/laplace_demo.cpp src/faster_gaussi_filter.cpp include/laplace_of_gaussi.h src/laplace_of_gaussi.cpp)
+add_executable(guided_filter src/laplace_demo.cpp src/faster_gaussi_filter.cpp include/laplace_of_gaussi.h src/laplace_of_gaussi.cpp include/blob_detection.cpp)
 
 
 # 设置  opencv
