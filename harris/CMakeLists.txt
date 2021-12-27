@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.12)
 project(guided_filter)
 
 # 添加编译选项
-SET(CMAKE_CXX_FLAGS "-std=c++14 ")
+SET(CMAKE_CXX_FLAGS "-std=c++14 -O1")
 
 
 set(PROJECT_SOURCE_DIR ./)
@@ -27,6 +27,8 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 # 链接 opencv 动态库路径
 link_directories(${OpenCV_LIBRARY_DIRS})
 
+# 设置 Eigen3
+include_directories(D:/environments/C++/3rdparty/Eigen3/eigen-3.3.9/installed/include/eigen3)
 
 # 设置库文件
 target_link_libraries(guided_filter ${OpenCV_LIBS})
