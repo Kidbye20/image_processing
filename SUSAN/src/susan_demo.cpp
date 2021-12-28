@@ -332,7 +332,7 @@ namespace SUSAN_EDGE {
                                 core_j += j + dis_i[k];
                             }
                         }
-                        core_i /= core_num, core_j /= core_num; // std::cout << "(" << core_i << ", " << core_j << ")  ==>  (" << i << ", " << j << ")\n";
+                        core_i /= core_num, core_j /= core_num;
                         // 引力中心(core_x, core_y) 与 当前中心(i, j) 的连线垂直于边缘, 所以角度就是 x / y, 而不是 y / x
                         // 记录角度大小和正负
                         direct_ptr[j] = (core_j - j) * 1.0 / ((core_i - i) + 1e-12);
@@ -353,13 +353,12 @@ namespace SUSAN_EDGE {
                         // 求出角度大小
                         direct_ptr[j] = trend_j * 1. / (trend_i + 1e-12);
                         // 求出正负
-                        if(is_positive < 0)
-                            direct_ptr[j] = -direct_ptr[j];
+                        if(is_positive < 0) direct_ptr[j] = -direct_ptr[j];
                     }
                 }
             }
         }
-        cv_show(10 * touint8(response, H, W));
+        // cv_show(10 * touint8(response, H, W));
         cv_write(10 * touint8(response, H, W), "./images/output/edge_detection/1_edge_response.png");
         // 现在已经知道每一个点的方向, 沿着方向做非极大化抑制
         std::vector<int> nms_result;
@@ -402,18 +401,18 @@ namespace SUSAN_EDGE {
                 }
             }
         }
-        cv_show(10 * touint8(nms_result, H, W));
+        // cv_show(10 * touint8(nms_result, H, W));
         cv_write(10 * touint8(nms_result, H, W), "./images/output/edge_detection/2_nms_result.png");
         // 高低阈值, 扩大对比度
-        const double low_threshold = 3;
-        const double high_threshold = 10;
+        const double low_threshold = 5;
+        const double high_threshold = 14;
         cv::Mat refined(H, W, CV_8UC1);
         for(int i = 0;i < length; ++i) {
             if(nms_result[i] > high_threshold) refined.data[i] = 255;
             else if(nms_result[i] > low_threshold) refined.data[i] = 128;
             else refined.data[i] = 0;
         }
-        cv_show(refined);
+        // cv_show(refined);
         cv_write(refined, "./images/output/edge_detection/3_low_high_threshold.png");
         // 连接高低阈值, 删除孤立点
         for(int i = 1; i < H - 1; ++i) {
@@ -468,18 +467,160 @@ namespace SUSAN_EDGE {
 
     void edge_detect_demo() {
         const std::string save_dir("./images/output/edge_detection/");
-        std::string origin_path("../images/corner/a3473-jmac_MG_0161.png");
+        std::string origin_path("../images/corner/a2992-NKIM_MG_7779.png");
         const auto origin_image = cv::imread(origin_path);
         if(origin_image.empty()) {
             std::cout << "读取图像 " << origin_path << " 失败 !" << std::endl;
             return;
         }
-        const auto edge_extraction = susan_edge_detect(origin_image, 3, 30);
+        auto edge_extraction = susan_edge_detect(origin_image, 3, 30);
         cv_show(edge_extraction);
-        cv_write(edge_extraction, save_dir + "house.png");
+        cv_write(edge_extraction, save_dir + "french.png");
+
+        // 添加噪声
+        const auto noisy_image = add_gaussian_noise(origin_image);
+        cv_show(noisy_image);
+        edge_extraction = susan_edge_detect(noisy_image, 3, 30);
+        cv_show(edge_extraction);
+        cv_write(edge_extraction, save_dir + "noisy.png");
+
+        // 旋转
+        const auto rotated_image = my_rotate(origin_image);
+        cv_show(rotated_image);
+        edge_extraction = susan_edge_detect(rotated_image, 3, 30);
+        cv_show(edge_extraction);
+        cv_write(edge_extraction, save_dir + "rotate.png");
+
+        // 灰度变换
+        const cv::Mat darken_image = 0.5 * origin_image;
+        darken_image.convertTo(darken_image, CV_8UC3);
+        cv_show(darken_image);
+        edge_extraction = susan_edge_detect(darken_image, 3, 15);
+        cv_show(edge_extraction);
+        cv_write(edge_extraction, save_dir + "darken.png");
+
+        // 尺度
+        cv::Mat scaled_image;
+        cv::resize(origin_image, scaled_image, cv::Size(origin_image.cols / 4, origin_image.rows / 4));
+        cv_show(scaled_image);
+        edge_extraction = susan_edge_detect(scaled_image, 3, 30);
+        cv_show(edge_extraction);
+        cv_write(edge_extraction, save_dir + "rotate.png");
     }
 }
 
+
+namespace SUSAN_DENOISE {
+
+    cv::Mat make_pad(const cv::Mat &one_image, const int pad_H, const int pad_W) {
+        cv::Mat padded_image;
+        cv::copyMakeBorder(one_image, padded_image, pad_H, pad_H, pad_W, pad_W, cv::BORDER_REPLICATE);
+        return padded_image;
+    }
+
+    inline double fast_exp(const double y) {
+        double d;
+        *(reinterpret_cast<int*>(&d) + 0) = 0;
+        *(reinterpret_cast<int*>(&d) + 1) = static_cast<int>(1512775 * y + 1072632447);
+        return d;
+    }
+
+    cv::Mat susan_edge_preserving_denoise(
+            const cv::Mat& source,
+            const int radius=3,
+            const double sigma=1.0,
+            const double similar_threshold=5) {
+        // 单通道的去噪
+        auto susan_edge_preserving_denoise_gray = [radius, sigma, similar_threshold](const cv::Mat& gray) -> cv::Mat {
+            // 做 padding
+            const auto padded = make_pad(gray, radius, radius);
+            const int W2 = padded.cols;
+            const int W2_radius = W2 - radius;
+            const int H2_radius = padded.rows - radius;
+            // 值域滤波没有滤波模板, 但可以准备局部区域的定位
+            int cnt = 0;
+            const int max_size = (2 * radius + 1) * (2 * radius + 1);
+            std::vector<int> offset(max_size, 0);
+            const int radius_2 = (radius + 0.5) * (radius + 0.5);
+            // 圆形模板
+            for(int i = -radius;i <= radius; ++i)
+                for(int j = -radius; j <= radius; ++j)
+                    if(i * i + j * j <= radius_2) {
+                        if(i == 0 and j == 0) continue;
+                        offset[cnt++] = i * W2 + j;
+                    }
+            // 开始滤波
+            cv::Mat result = gray.clone();
+            const double constant = fast_exp(-radius * radius / (2 * sigma * sigma));
+            const double threshold_inv = 1. / (similar_threshold * similar_threshold);
+            for(int i = radius;i < H2_radius; ++i) {
+                const uchar* const row_ptr = padded.data + i * W2;
+                uchar* const res_ptr = result.data + (i - radius) * gray.cols;
+                for(int j = radius; j < W2_radius; ++j) {
+                    double weight_sum = 0;
+                    double intensity_sum = 0;
+                    const int center = row_ptr[j];
+                    for(int k = 0;k < cnt; ++k) {
+                        const int residual = row_ptr[j + offset[k]] - center;
+                        const double weight = constant * fast_exp( - residual * residual * threshold_inv);
+                        weight_sum += weight;
+                        intensity_sum += weight * row_ptr[j + offset[k]];
+                    }
+                    res_ptr[j - radius] = cv::saturate_cast<uchar>(intensity_sum / weight_sum);
+                }
+            }
+            return result;
+        };
+        const int C = source.channels();
+        // 单通道
+        if(C == 1)
+            return susan_edge_preserving_denoise_gray(source);
+        // 多通道
+        std::vector<cv::Mat> channels;
+        cv::split(source, channels);
+        std::vector<cv::Mat> denoised_channels;
+        for(const auto& ch : channels) {
+            denoised_channels.emplace_back(susan_edge_preserving_denoise_gray(ch));
+        }
+        // 多通道合并
+        cv::Mat denoised;
+        cv::merge(denoised_channels, denoised);
+        return denoised;
+    }
+
+    void edge_preserving_denoise_demo() {
+        const std::string save_dir("./images/output/denoise/");
+        std::string origin_path("../images/denoise/woman_1.png");
+        const auto origin_image = cv::imread(origin_path);
+        if(origin_image.empty()) {
+            std::cout << "读取图像 " << origin_path << " 失败 !" << std::endl;
+            return;
+        }
+        cv::Mat denoised, comparison, another_image;
+        denoised = susan_edge_preserving_denoise(origin_image, 9, 3.0, 30);
+        comparison = cv_concat({origin_image, denoised});
+        cv_show(comparison);
+        cv_write(comparison, save_dir + "woman_1.png");
+
+        another_image = cv::imread("../images/denoise/woman_3.jpg");
+        denoised = susan_edge_preserving_denoise(another_image, 6, 2.0, 30);
+        comparison = cv_concat({another_image, denoised});
+        cv_show(comparison);
+        cv_write(comparison, save_dir + "woman_3.png");
+
+        another_image = cv::imread("../images/denoise/Kodak24/22.png");
+        denoised = susan_edge_preserving_denoise(another_image, 6, 2.0, 30);
+        comparison = cv_concat({another_image, denoised});
+        cv_show(comparison);
+        cv_write(comparison, save_dir + "Kodak24_22.png");
+
+        another_image = cv::imread("../images/denoise/Kodak24/18.png");
+        denoised = susan_edge_preserving_denoise(another_image, 6, 2.0, 30);
+        comparison = cv_concat({another_image, denoised});
+        cv_show(comparison);
+        cv_write(comparison, save_dir + "Kodak24_18.png");
+    }
+}
 
 
 
@@ -490,7 +631,10 @@ int main() {
     // SUSAN_CORNER::corner_detect_demo();
 
     // 边缘检测
-    SUSAN_EDGE::edge_detect_demo();
+    // SUSAN_EDGE::edge_detect_demo();
+
+    // 去噪
+    SUSAN_DENOISE::edge_preserving_denoise_demo();
 
     return 0;
 }
