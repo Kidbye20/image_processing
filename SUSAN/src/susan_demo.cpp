@@ -105,146 +105,380 @@ namespace {
 
 
 
-using key_points_type = std::vector< std::pair<int, int> >;
-key_points_type susan_corner_detect(const cv::Mat& source, const int radius, const int nms_radius=5, const int threshold=20) {
-    // 获取图像信息
-    const int H = source.rows;
-    const int W = source.cols;
-    const int length = H * W;
-    cv::Mat gray_image;
-    if(source.channels() == 3) cv::cvtColor(source, gray_image, cv::COLOR_BGR2GRAY);
-    else gray_image = source;
-    // 准备一个模板
-    const int max_size = (2 * radius + 1) * (2 * radius + 1);
-    std::vector<int> weights(max_size, 0);
-    std::vector<int> offset(max_size, 0);
-    const int radius_2 = (radius + 0.5) * (radius + 0.5);
-    int cnt = 0;
-    for(int i = -radius;i <= radius; ++i)
-        for(int j = -radius; j <= radius; ++j)
-            if(i * i + j * j <= radius_2) {
-                weights[cnt] = 1;
-                offset[cnt++] = i * W + j;
-            }
-    // 判断是否是同质点的阈值
-    const int half_area = cnt / 2;
-    // 存放每个点的响应值
-    std::vector<int> response(length, 0);
-    // 开始计算角点响应值
-    const int H_radius = H - radius, W_radius = W - radius;
-    std::cout << H_radius << " , " << W_radius << std::endl;
-    for(int i = radius; i < H_radius; ++i) {
-        uchar* const row_ptr = gray_image.data + i * W;
-        int* const res_ptr = response.data() + i * W;
-        for(int j = radius; j < W_radius; ++j) {
-            // 首先, 判断这个圆形窗口和中心点的差小于阈值的
-            const uchar center = row_ptr[j];
-            double number = 0;
-            for(int k = 0;k < cnt; ++k)
-                if(std::abs(row_ptr[j + offset[k]] - center) < threshold)
-                    number += weights[k];
-            // 把中心点减去
-            --number;
-            // 如果同质点的加权之和小于一半的面积
-            if(number < half_area)
-                res_ptr[j] = half_area - number;
-        }
-    }
-    cv_show(20 * touint8(response, H, W));
-    cv_write(30 * touint8(response, H, W), "./images/output/corner_detection/SUSAN_response.png");
-    // 准备结果
-    key_points_type detection;
-    // 非极大值抑制
-    for(int i = nms_radius; i < H - nms_radius; ++i) {
-        const int* const row_ptr = response.data() + i * W;
-        for(int j = nms_radius; j < W - nms_radius; ++j) {
-            // 找局部区域的所有点判断是否是极大值
-            const int center = row_ptr[j];
-            // center = 0 的点很可能就是平坦区域, 不参与比较
-            if(center > 1) {
-                bool flag = true;
-                for(int x = -nms_radius; x <= nms_radius; ++x) {
-                    const int* const cur_ptr = row_ptr + j + x * W;
-                    for(int y = -nms_radius; y <= nms_radius; ++y) {
-                        if(cur_ptr[y] >= center) {
-                            if(x == 0 and y == 0) continue;
-                            flag = false; break;
-                        }
-                    }
-                    if(!flag) break;
+
+namespace SUSAN_CORNER {
+
+    using key_points_type = std::vector< std::pair<int, int> >;
+    key_points_type susan_corner_detect(const cv::Mat& source, const int radius, const int nms_radius=5, const int threshold=20) {
+        // 获取图像信息
+        const int H = source.rows;
+        const int W = source.cols;
+        const int length = H * W;
+        cv::Mat gray_image;
+        if(source.channels() == 3) cv::cvtColor(source, gray_image, cv::COLOR_BGR2GRAY);
+        else gray_image = source;
+        // 准备一个模板
+        const int max_size = (2 * radius + 1) * (2 * radius + 1);
+        std::vector<int> weights(max_size, 0);
+        std::vector<int> offset(max_size, 0);
+        const int radius_2 = (radius + 0.5) * (radius + 0.5);
+        int cnt = 0;
+        for(int i = -radius;i <= radius; ++i)
+            for(int j = -radius; j <= radius; ++j)
+                if(i * i + j * j <= radius_2) {
+                    weights[cnt] = 1;
+                    offset[cnt++] = i * W + j;
                 }
-                // 如果真的是极大值
-                if(flag) detection.emplace_back(i, j);
+        // 判断是否是同质点的阈值
+        const int half_area = cnt / 2;
+        // 存放每个点的响应值
+        std::vector<int> response(length, 0);
+        // 开始计算角点响应值
+        const int H_radius = H - radius, W_radius = W - radius;
+        for(int i = radius; i < H_radius; ++i) {
+            uchar* const row_ptr = gray_image.data + i * W;
+            int* const res_ptr = response.data() + i * W;
+            for(int j = radius; j < W_radius; ++j) {
+                // 首先, 判断这个圆形窗口和中心点的差小于阈值的
+                const uchar center = row_ptr[j];
+                double number = 0;
+                for(int k = 0;k < cnt; ++k)
+                    if(std::abs(row_ptr[j + offset[k]] - center) < threshold)
+                        number += weights[k];
+                // 把中心点减去
+                --number;
+                // 如果同质点的加权之和小于一半的面积
+                if(number < half_area)
+                    res_ptr[j] = half_area - number;
             }
         }
+        // cv_show(20 * touint8(response, H, W));
+        // cv_write(30 * touint8(response, H, W), "./images/output/corner_detection/SUSAN_response.png");
+        // 准备结果
+        key_points_type detection;
+        // 非极大值抑制
+        for(int i = nms_radius; i < H - nms_radius; ++i) {
+            const int* const row_ptr = response.data() + i * W;
+            for(int j = nms_radius; j < W - nms_radius; ++j) {
+                // 找局部区域的所有点判断是否是极大值
+                const int center = row_ptr[j];
+                // center = 0 的点很可能就是平坦区域, 不参与比较
+                if(center > 1) {
+                    bool flag = true;
+                    for(int x = -nms_radius; x <= nms_radius; ++x) {
+                        const int* const cur_ptr = row_ptr + j + x * W;
+                        for(int y = -nms_radius; y <= nms_radius; ++y) {
+                            if(cur_ptr[y] >= center) {
+                                if(x == 0 and y == 0) continue;
+                                flag = false; break;
+                            }
+                        }
+                        if(!flag) break;
+                    }
+                    // 如果真的是极大值
+                    if(flag) detection.emplace_back(i, j);
+                }
+            }
+        }
+        return detection;
     }
-    return detection;
+
+
+    void corner_detect_demo() {
+        const std::string save_dir("./images/output/corner_detection/");
+        std::string origin_path("../images/corner/harris_demo_1.png");
+        const auto origin_image = cv::imread(origin_path);
+        if(origin_image.empty()) {
+            std::cout << "读取图像 " << origin_path << " 失败 !" << std::endl;
+            return;
+        }
+        // 写一个展示的函数
+        auto corner_display = [](const cv::Mat& source, const key_points_type& detection, const std::string save_path, const int radius=3, const int thickness=4)
+                -> void {
+            cv::Mat display = source.clone();
+            for(const auto& item : detection)
+            cv::circle(display, cv::Point(item.second, item.first), radius, cv::Scalar(0, 255, 0), thickness);
+            cv_show(display);
+            cv_write(display, save_path);
+        };
+        cv::Mat another_image;
+
+        // 朴素的 SUSAN
+        auto detection = susan_corner_detect(origin_image, 3, 10, 45);
+        corner_display(origin_image, detection, save_dir + "horse.png");
+
+        another_image = cv::imread("../images/corner/corner_2.png");
+        detection = susan_corner_detect(another_image, 3, 10, 45);
+        corner_display(another_image, detection, save_dir + "table.png");
+
+        another_image = cv::imread("../images/corner/corner_1.png");
+        detection = susan_corner_detect(another_image, 3, 5, 10);
+        corner_display(another_image, detection, save_dir + "toy.png");
+
+        another_image = cv::imread("../images/corner/corner_3.png");
+        detection = susan_corner_detect(another_image, 3, 4, 30);
+        corner_display(another_image, detection, save_dir + "house.png", 2, 2);
+
+        another_image = cv::imread("../images/corner/a0515-NKIM_MG_6602.png");
+        detection = susan_corner_detect(another_image, 3, 8, 50);
+        corner_display(another_image, detection, save_dir + "French.png", 2, 2);
+
+        another_image = cv::imread("../images/corner/a0423-07-06-02-at-07h35m36-s_MG_1355.png");
+        detection = susan_corner_detect(another_image, 3, 7, 45);
+        corner_display(another_image, detection, save_dir + "gugong.png", 2, 2);
+
+        another_image = cv::imread("../images/corner/a0367-IMG_0338.png");
+        detection = susan_corner_detect(another_image, 3, 7, 60);
+        corner_display(another_image, detection, save_dir + "city.png", 2, 2);
+
+        another_image = cv::imread("../images/corner/a0516-IMG_4420.png");
+        detection = susan_corner_detect(another_image, 3, 10, 30);
+        corner_display(another_image, detection, save_dir + "car.png", 2, 2);
+
+        // 如果是噪声的话
+        const auto noisy_image = add_gaussian_noise(cv::imread("../images/corner/a0515-NKIM_MG_6602.png"));
+        detection = susan_corner_detect(noisy_image, 3, 10, 30);
+        corner_display(noisy_image, detection, save_dir + "noisy.png", 2, 2);
+
+        // 如果是旋转的话
+        const auto rotated_image = my_rotate(cv::imread("../images/corner/a0515-NKIM_MG_6602.png"));
+        detection = susan_corner_detect(rotated_image, 3, 10, 45);
+        corner_display(rotated_image, detection, save_dir + "rotated.png", 2, 2);
+
+        // 如果是灰度变化
+        cv::Mat darken_image = 0.5 * cv::imread("../images/corner/a0515-NKIM_MG_6602.png");
+        darken_image.convertTo(darken_image, CV_8UC3);
+        detection = susan_corner_detect(darken_image, 3, 10, 23);
+        corner_display(darken_image, detection, save_dir + "darken.png", 2, 2);
+
+        // 如果是尺度变化
+        cv::Mat scaled_image = cv::imread("../images/corner/a0515-NKIM_MG_6602.png");
+        cv::resize(scaled_image, scaled_image, cv::Size(scaled_image.cols / 4, scaled_image.rows / 4));
+        scaled_image.convertTo(scaled_image, CV_8UC3);
+        detection = susan_corner_detect(scaled_image, 3, 2, 45);
+        corner_display(scaled_image, detection, save_dir + "scaled.png", 1, 1);
+    }
 }
 
 
 
-void corner_detect_demo() {
-    const std::string save_dir("./images/output/corner_detection/");
-    std::string origin_path("../images/corner/harris_demo_1.png");
-    const auto origin_image = cv::imread(origin_path);
-    if(origin_image.empty()) {
-        std::cout << "读取图像 " << origin_path << " 失败 !" << std::endl;
-        return;
+
+
+namespace SUSAN_EDGE {
+
+    cv::Mat susan_edge_detect(const cv::Mat& source, const int radius=3, const int threshold=30, const double edge_ratio=0.75) {
+        // 获取图像信息
+        cv::Mat gray;
+        if(source.channels() == 3) cv::cvtColor(source, gray, cv::COLOR_BGR2GRAY);
+        else gray = source;
+        const int H = gray.rows;
+        const int W = gray.cols;
+        const int length = H * W;
+        // 准备一个圆形模板
+        const int max_size = (2 * radius + 1) * (2 * radius + 1);
+        std::vector<int> weights(max_size, 0);
+        std::vector<int> offset(max_size, 0);
+        std::vector<int> dis_i(max_size, 0), dis_j(max_size, 0);
+        const int radius_2 = (radius + 0.5) * (radius + 0.5);
+        int cnt = 0;
+        for(int i = -radius;i <= radius; ++i) // 竖直方向
+            for(int j = -radius; j <= radius; ++j) // 水平方向
+                if(i * i + j * j <= radius_2) {
+                    weights[cnt] = 1;
+                    offset[cnt] = i * W + j;
+                    dis_i[cnt] = i, dis_j[cnt] = j;
+                    ++cnt;
+                }
+        // 计算边缘响应值
+        // 判断是否是同质点的阈值
+        const int half_area = cnt / 2;
+        const int similar_threshold = edge_ratio * cnt; // 0.75 个总和
+        // 存放每个点的响应值
+        std::vector<int> response(length, 0);
+        // 存放每个点的边缘方向
+        std::vector<double> direction(length, 0);
+        // 开始计算角点响应值
+        const int H_radius = H - radius, W_radius = W - radius;
+        for(int i = radius; i < H_radius; ++i) {
+            uchar* const row_ptr = gray.data + i * W;
+            int* const res_ptr = response.data() + i * W;
+            double* const direct_ptr = direction.data() + i * W;
+            for(int j = radius; j < W_radius; ++j) {
+                // 首先, 寻找这个圆形窗口和中心点的差小于阈值的点
+                double number = 0;
+                const uchar center = row_ptr[j];
+                std::vector<int> book(cnt, 0); // 记录哪些点是同质点
+                for(int k = 0;k < cnt; ++k) {
+                    // 如果是同质点
+                    if(std::abs(row_ptr[j + offset[k]] - center) < threshold) {
+                        number += weights[k];
+                        book[k] = 1;
+                    }
+                }
+                --number; // 把中心点减去
+                // 这里区分平坦区域和边缘, 大于 0.75 的是平坦区域
+                if(number < similar_threshold) {
+                    // 记录边缘响应值
+                    res_ptr[j] = similar_threshold - number;
+                    // 【阶跃边缘】
+                    if(number >= half_area) {
+                        // 找同质区域的引力中心坐标
+                        int core_i = 0, core_j = 0;
+                        int core_num = 0;
+                        for(int k = 0;k < cnt; ++k) {
+                            if(book[k] == 1) {
+                                ++core_num;
+                                core_i += i + dis_i[k];
+                                core_j += j + dis_i[k];
+                            }
+                        }
+                        core_i /= core_num, core_j /= core_num; // std::cout << "(" << core_i << ", " << core_j << ")  ==>  (" << i << ", " << j << ")\n";
+                        // 引力中心(core_x, core_y) 与 当前中心(i, j) 的连线垂直于边缘, 所以角度就是 x / y, 而不是 y / x
+                        // 记录角度大小和正负
+                        direct_ptr[j] = (core_j - j) * 1.0 / ((core_i - i) + 1e-12);
+                    }
+                    // 【过渡边缘】
+                    else {
+                        // 这时候, 需要计算两个方向的 x 和 y 之差, 只需要统计范围内的同质点就好
+                        int trend_i = 0;
+                        int trend_j = 0;
+                        double is_positive = 0;
+                        for(int k = 0;k < cnt; ++k) {
+                            if(book[k] == 1) {
+                                trend_i += dis_i[k] * dis_i[k];
+                                trend_j += dis_j[k] * dis_j[k];
+                                is_positive += dis_i[k] * dis_j[k];
+                            }
+                        }
+                        // 求出角度大小
+                        direct_ptr[j] = trend_j * 1. / (trend_i + 1e-12);
+                        // 求出正负
+                        if(is_positive < 0)
+                            direct_ptr[j] = -direct_ptr[j];
+                    }
+                }
+            }
+        }
+        cv_show(10 * touint8(response, H, W));
+        cv_write(10 * touint8(response, H, W), "./images/output/edge_detection/1_edge_response.png");
+        // 现在已经知道每一个点的方向, 沿着方向做非极大化抑制
+        std::vector<int> nms_result;
+        nms_result.resize(length);
+        std::copy(response.begin(), response.end(), nms_result.begin());
+        // 开始非极大化抑制
+        for(int i = 1; i < H - 1; ++i) {
+            const int* const row_ptr = response.data() + i * W;
+            const double* const direct_ptr = direction.data() + i * W;
+            int* const res_ptr = nms_result.data() + i * W;
+            for(int j = 1; j < W - 1; ++j) {
+                // 开始检查方向
+                double lhs, rhs;
+                const float ratio = direct_ptr[j];
+                // 靠近 x 轴, 1 - 3 象限
+                if(0 <= ratio and ratio < 1) {
+                    lhs = ratio * row_ptr[j - 1 + W] + (1 - ratio) * row_ptr[j - 1];
+                    rhs = ratio * row_ptr[j + 1 - W] + (1 - ratio) * row_ptr[j + 1];
+                }
+                // 靠近 y 轴, 1 - 3 象限
+                else if(ratio >= 1) {
+                    const float ratio_inv = 1. / ratio;
+                    lhs = ratio_inv * row_ptr[j - 1 + W] * (1 - ratio_inv) * row_ptr[j + W];
+                    rhs = ratio_inv * row_ptr[j + 1 - W] * (1 - ratio_inv) * row_ptr[j - W];
+                }
+                // 靠近 x 轴, 2 - 4 象限
+                else if(ratio > -1 and ratio < 0) {
+                    lhs = -ratio * row_ptr[j - 1 - W] + (1 + ratio) * row_ptr[j - 1];
+                    rhs = -ratio * row_ptr[j + 1 + W] + (1 + ratio) * row_ptr[j + 1];
+                }
+                // 靠近 y 轴, 2 - 4 象限
+                else if(ratio <= -1) {
+                    const float ratio_inv = 1. / ratio;
+                    rhs = -ratio_inv * row_ptr[j - 1 - W] + (1 + ratio_inv) * row_ptr[j - W];
+                    lhs = -ratio_inv * row_ptr[j + 1 + W] + (1 + ratio_inv) * row_ptr[j + W];
+                }
+                // 判断是否是这个梯度方向上的局部极值
+                if(row_ptr[j] < lhs or row_ptr[j] < rhs) {
+                    res_ptr[j] = 0;
+                }
+            }
+        }
+        cv_show(10 * touint8(nms_result, H, W));
+        cv_write(10 * touint8(nms_result, H, W), "./images/output/edge_detection/2_nms_result.png");
+        // 高低阈值, 扩大对比度
+        const double low_threshold = 3;
+        const double high_threshold = 10;
+        cv::Mat refined(H, W, CV_8UC1);
+        for(int i = 0;i < length; ++i) {
+            if(nms_result[i] > high_threshold) refined.data[i] = 255;
+            else if(nms_result[i] > low_threshold) refined.data[i] = 128;
+            else refined.data[i] = 0;
+        }
+        cv_show(refined);
+        cv_write(refined, "./images/output/edge_detection/3_low_high_threshold.png");
+        // 连接高低阈值, 删除孤立点
+        for(int i = 1; i < H - 1; ++i) {
+            uchar* const res_ptr = refined.data + i * W;
+            for(int j = 1;j < W - 1; ++j) {
+                if(res_ptr[j] == 128) {
+                    if(res_ptr[j - 1] == 255 or res_ptr[j + 1] == 255 or
+                       res_ptr[j - 1 - W] == 255 or res_ptr[j - W] == 255 or res_ptr[j + 1 - W] == 255 or
+                       res_ptr[j - 1 + W] == 255 or res_ptr[j + W] == 255 or res_ptr[j + 1 + W] == 255)
+                        res_ptr[j] = 255;
+                }
+            }
+        }
+        for(int i = 1; i < H - 1; ++i) {
+            uchar* const res_ptr = refined.data + i * W;
+            for(int j = W - 2;j > 0; --j) {
+                if(res_ptr[j] == 128) {
+                    if(res_ptr[j - 1] == 255 or res_ptr[j + 1] == 255 or
+                       res_ptr[j - 1 - W] == 255 or res_ptr[j - W] == 255 or res_ptr[j + 1 - W] == 255 or
+                       res_ptr[j - 1 + W] == 255 or res_ptr[j + W] == 255 or res_ptr[j + 1 + W] == 255)
+                        res_ptr[j] = 255;
+                }
+            }
+        }
+        for(int i = H - 2; i >= 1; --i) {
+            uchar* const res_ptr = refined.data + i * W;
+            for(int j = 1;j < W - 1; ++j) {
+                if(res_ptr[j] == 128) {
+                    if(res_ptr[j - 1] == 255 or res_ptr[j + 1] == 255 or
+                       res_ptr[j - 1 - W] == 255 or res_ptr[j - W] == 255 or res_ptr[j + 1 - W] == 255 or
+                       res_ptr[j - 1 + W] == 255 or res_ptr[j + W] == 255 or res_ptr[j + 1 + W] == 255)
+                        res_ptr[j] = 255;
+                }
+            }
+        }
+        for(int i = H - 2; i >= 1; --i) {
+            uchar* const res_ptr = refined.data + i * W;
+            for(int j = W - 2;j >= 1; --j) {
+                if(res_ptr[j] == 128) {
+                    if(res_ptr[j - 1] == 255 or res_ptr[j + 1] == 255 or
+                       res_ptr[j - 1 - W] == 255 or res_ptr[j - W] == 255 or res_ptr[j + 1 - W] == 255 or
+                       res_ptr[j - 1 + W] == 255 or res_ptr[j + W] == 255 or res_ptr[j + 1 + W] == 255)
+                        res_ptr[j] = 255;
+                    else res_ptr[j] = 0;
+                }
+            }
+        }
+        cv_write(refined, "./images/output/edge_detection/4_connect.png");
+        // 准备一个结果
+        return refined;
     }
-    // 写一个展示的函数
-    auto corner_display = [](const cv::Mat& source, const key_points_type& detection, const std::string save_path, const int radius=3, const int thickness=4)
-            -> void {
-        cv::Mat display = source.clone();
-        for(const auto& item : detection)
-        cv::circle(display, cv::Point(item.second, item.first), radius, cv::Scalar(0, 255, 0), thickness);
-        cv_show(display);
-        cv_write(display, save_path);
-    };
-    cv::Mat another_image;
 
-    // 朴素的 SUSAN
-    auto detection = susan_corner_detect(origin_image, 3, 15, 30);
-    corner_display(origin_image, detection, save_dir + "horse.png");
-
-    another_image = cv::imread("../images/corner/corner_2.png");
-    detection = susan_corner_detect(another_image, 3, 10, 45);
-    corner_display(another_image, detection, save_dir + "table.png");
-
-    another_image = cv::imread("../images/corner/corner_1.png");
-    detection = susan_corner_detect(another_image, 3, 5, 10);
-    corner_display(another_image, detection, save_dir + "toy.png");
-
-    another_image = cv::imread("../images/corner/corner_3.png");
-    detection = susan_corner_detect(another_image, 3, 4, 30);
-    corner_display(another_image, detection, save_dir + "house.png", 2, 2);
-
-    another_image = cv::imread("../images/corner/a0515-NKIM_MG_6602.png");
-    detection = susan_corner_detect(another_image, 3, 8, 50);
-    corner_display(another_image, detection, save_dir + "French.png", 2, 2);
-
-    another_image = cv::imread("../images/corner/a0423-07-06-02-at-07h35m36-s_MG_1355.png");
-    detection = susan_corner_detect(another_image, 3, 7, 45);
-    corner_display(another_image, detection, save_dir + "gugong.png", 2, 2);
-
-    another_image = cv::imread("../images/corner/a0367-IMG_0338.png");
-    detection = susan_corner_detect(another_image, 3, 7, 60);
-    corner_display(another_image, detection, save_dir + "city.png", 2, 2);
-
-    another_image = cv::imread("../images/corner/a0516-IMG_4420.png");
-    detection = susan_corner_detect(another_image, 3, 10, 45);
-    corner_display(another_image, detection, save_dir + "car.png", 2, 2);
-
-    // 如果是噪声的话
-    const auto noisy_image = add_gaussian_noise(cv::imread("../images/corner/a0515-NKIM_MG_6602.png"));
-    detection = susan_corner_detect(noisy_image, 3, 10, 45);
-    corner_display(noisy_image, detection, save_dir + "noisy.png", 2, 2);
-
-    // 如果是旋转的话
-    const auto rotated_image = my_rotate(cv::imread("../images/corner/a0515-NKIM_MG_6602.png"));
-    detection = susan_corner_detect(rotated_image, 3, 10, 45);
-    corner_display(rotated_image, detection, save_dir + "rotated.png", 2, 2);
+    void edge_detect_demo() {
+        const std::string save_dir("./images/output/edge_detection/");
+        std::string origin_path("../images/corner/a3473-jmac_MG_0161.png");
+        const auto origin_image = cv::imread(origin_path);
+        if(origin_image.empty()) {
+            std::cout << "读取图像 " << origin_path << " 失败 !" << std::endl;
+            return;
+        }
+        const auto edge_extraction = susan_edge_detect(origin_image, 3, 30);
+        cv_show(edge_extraction);
+        cv_write(edge_extraction, save_dir + "house.png");
+    }
 }
-
 
 
 
@@ -253,7 +487,10 @@ int main() {
     std::cout << "opencv  :  " << CV_VERSION << std::endl;
 
     // 角点检测
-    corner_detect_demo();
+    // SUSAN_CORNER::corner_detect_demo();
+
+    // 边缘检测
+    SUSAN_EDGE::edge_detect_demo();
 
     return 0;
 }
