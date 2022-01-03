@@ -20,28 +20,14 @@ namespace {
         cv::destroyAllWindows();
     }
 
-    cv::Mat cv_concat(const std::vector<cv::Mat> images, const bool v=false) {
-        cv::Mat result;
-        if(not v) cv::hconcat(images, result);
-        else cv::vconcat(images, result);
-        return result;
-    }
-
     bool cv_write(const cv::Mat& source, const std::string save_path) {
         return cv::imwrite(save_path, source, std::vector<int>({cv::IMWRITE_PNG_COMPRESSION, 0}));
-    }
-
-    template<typename T>
-    cv::Mat touint8(const std::vector<T>& source, const int H, const int W) {
-        cv::Mat res(H, W, CV_8UC1);
-        const int length = H * W;
-        for(int i = 0;i < length; ++i) res.data[i] = std::abs(source[i]);
-        return res;
     }
 
     void cv_info(const cv::Mat& one_image) {
         std::cout << "高  :  " << one_image.rows << "\n宽  :  " << one_image.cols << "\n通道 :  " << one_image.channels() << std::endl;
         std::cout << "步长 :  " << one_image.step << std::endl;
+        std::cout << "是否连续" << std::boolalpha << one_image.isContinuous() << std::endl;
     }
 
     cv::Mat make_pad(const cv::Mat& one_image, const int pad_H, const int pad_W) {
@@ -71,21 +57,41 @@ std::vector<float> get_divergence(const cv::Mat& fore, const cv::Mat& back, cons
         for(int j = 0;j < W * C; j += C) {
             // 三个方向上的, 还得分开计算
             for(int ch = 0;ch < C; ++ch) {
-                float grad_sum = 0;
                 // 四个方向上
                 const int start = j + ch;
-                for(int k = 0;k < 4; ++k) {
-                    const float lhs = fore_ptr[start + offset[k]] - fore_ptr[start];
-                    const float rhs = back_ptr[start + offset[k]] - back_ptr[start];
-                    if(std::abs(lhs) > std::abs(rhs)) grad_sum += lhs;
-                    else grad_sum += rhs;
+                if(false) {
+                    // 如果不拆开四个方向分别比, 会得到错误的结果
+                    std::vector<float> fore_grad(4, 0);
+                    std::vector<float> back_grad(4, 0);
+                    for(int k = 0;k < 4; ++k) {
+                        fore_grad[k] = fore_ptr[start + offset[k]] - fore_ptr[start];
+                        back_grad[k] = back_ptr[start + offset[k]] - back_ptr[start];
+                    }
+                    float fore_sum = 0, back_sum = 0;
+                    for(int k = 0;k < 4; ++k) fore_sum += std::abs(fore_grad[k]), back_sum += std::abs(back_grad[k]);
+                    if(fore_sum > back_sum)
+                        res_ptr[start] = fore_grad[0] + fore_grad[1] + fore_grad[2] + fore_grad[3];
+                    else
+                        res_ptr[start] = back_grad[0] + back_grad[1] + back_grad[2] + back_grad[3];
+                } else {
+                    float grad_sum = 0;
+                    for(int k = 0;k < 4; ++k) {
+                        const float lhs = fore_ptr[start + offset[k]] - fore_ptr[start];
+                        if(not mix) grad_sum += lhs; // 如果不考虑背景图像的梯度信息
+                        else {
+                            const float rhs = back_ptr[start + offset[k]] - back_ptr[start];
+                            if(std::abs(lhs) > std::abs(rhs)) grad_sum += lhs;
+                            else grad_sum += rhs;
+                        }
+                    }
+                    res_ptr[start] = grad_sum;
                 }
-                res_ptr[j + ch] = grad_sum;
             }
         }
     }
     return laplace_result;
 }
+
 
 using cloned_type = std::vector< std::pair<int, std::vector<uchar> > >;
 cloned_type build_and_solve_poisson_equations(
@@ -110,10 +116,10 @@ cloned_type build_and_solve_poisson_equations(
     Eigen::MatrixXf b(pixel_cnt, CH);
     b.setZero();
     const uchar* const back_data = back.ptr<uchar>();
-    for (int y = 1; y < H - 1; ++y) {
-        for (int x = 1; x < W - 1; ++x) {
+    for (int i = 1; i < H - 1; ++i) {
+        for (int j = 1; j < W - 1; ++j) {
             // 获取当前点, 判断在不在不规则区域范围内
-            const int center = y * W + x;
+            const int center = i * W + j;
             const int pid = book[center];
             if (pid == -1) continue;
             // A 的赋值
@@ -160,15 +166,18 @@ cv::Mat possion_seamless_clone(
         const cv::Mat& foreground,
         const cv::Mat& background,
         const cv::Mat& mask,
-        const std::pair<int, int> start) {
+        const std::pair<int, int> start,
+        const bool mix=true) {
+
     // 异常处理
-    assert(not foreground.empty() and "前景图 foreground 读取失败");
-    assert(not background.empty() and "背景图 background 读取失败");
-    assert(not mask.empty() and "mask 读取失败");
+    assert(not foreground.empty() and "前景图 foreground 读取失败 !");
+    assert(not background.empty() and "背景图 background 读取失败 !");
+    assert(not mask.empty() and "mask 读取失败 !");
     assert(foreground.channels() == background.channels() and "前景图和背景图的通道数目不对等 !");
     assert(foreground.rows == mask.rows and foreground.cols == mask.cols and "前景图和 mask 的尺寸不对等 !");
     assert(start.first >= 0 and start.second >= 0 and "插入的起始位置不能为负 !");
     assert(start.first + foreground.rows <= background.rows and start.second + foreground.cols <= background.cols and "插入位置超出了背景图的界限 !");
+
     // 获取图像信息
     const int H = foreground.rows;
     const int W = foreground.cols;
@@ -178,7 +187,7 @@ cv::Mat possion_seamless_clone(
     const auto background_crop = background(cv::Rect(start.second, start.first, W, H)).clone();
 
     // 求解要插入的内容的散度, 也可与背景图散度相融合
-    const auto divergence = get_divergence(foreground, background_crop);
+    const auto divergence = get_divergence(foreground, background_crop, mix);
 
     // 根据泊松方程的条件, Ax = b, 构建 A, b 求解 x(不规则区域要填充的值)
     const auto modified = build_and_solve_poisson_equations(background_crop, divergence, mask);
@@ -196,31 +205,34 @@ cv::Mat possion_seamless_clone(
 
 void seamless_cloning_demo() {
     // 读取图像
-    const std::string input_dir("../images/edit/3/");
-    const std::string save_dir("./images/3/");
+    std::string input_dir("../images/edit/3/");
+    const std::string save_dir("./images/output/3/");
     cv::Mat background = cv::imread(input_dir + "background.jpg");
     cv::Mat foreground = cv::imread(input_dir + "src_image.png");
     cv::Mat mask = cv::imread(input_dir + "mask.png", cv::IMREAD_GRAYSCALE);
 
-    cv::Mat result = possion_seamless_clone(foreground, background,mask, {134, 140});
+    cv::Mat result = possion_seamless_clone(foreground, background,mask, {134, 140}, true);
     cv_show(result, "mixed and splited laplace");
     cv_write(result, save_dir + "mixed_splited_laplace.png");
+
+    // 如果是单纯的 laplace, 不要 mix, 会是什么效果
+    result = possion_seamless_clone(foreground, background,mask, {134, 140}, false);
+    cv_show(result, "pure_laplace");
+    cv_write(result, save_dir + "pure_laplace.png");
+
+    // 其它经典例子
+    input_dir = "./images/output/1/";
+    background = cv::imread(input_dir + "background.jpg");
+    foreground = cv::imread(input_dir + "src_image.png");
+    mask = cv::imread(input_dir + "mask.png", cv::IMREAD_GRAYSCALE);
 }
 
 
 
 int main() {
 
-    cv::Mat background = cv::imread("../images/edit/3/background.jpg");
-    cv::Mat foreground = cv::imread("../images/edit/3/src_image.png");
-    cv::Mat mask = cv::imread("../images/edit/3/mask.png", cv::IMREAD_GRAYSCALE);
-
-    cv::Mat result = possion_seamless_clone(foreground, background,mask, {134, 140});
-    cv::imshow("Mixed Gradients", result);
-
-    cv::imwrite("./images/output/3/mixed-gradients.png", result);
-    cv::waitKey();
-    cv::destroyAllWindows();
+    // 无缝隙合成图像
+    seamless_cloning_demo();
 
     return 0;
 }
