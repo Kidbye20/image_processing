@@ -206,12 +206,14 @@ cv::Mat possion_seamless_clone(
 void seamless_cloning_demo() {
     // 读取图像
     std::string input_dir("../images/edit/3/");
-    const std::string save_dir("./images/output/3/");
+    std::string save_dir("./images/output/3/");
     cv::Mat background = cv::imread(input_dir + "background.jpg");
     cv::Mat foreground = cv::imread(input_dir + "src_image.png");
     cv::Mat mask = cv::imread(input_dir + "mask.png", cv::IMREAD_GRAYSCALE);
 
-    cv::Mat result = possion_seamless_clone(foreground, background,mask, {134, 140}, true);
+    cv::Mat result;
+
+    result = possion_seamless_clone(foreground, background,mask, {134, 140}, true);
     cv_show(result, "mixed and splited laplace");
     cv_write(result, save_dir + "mixed_splited_laplace.png");
 
@@ -220,19 +222,215 @@ void seamless_cloning_demo() {
     cv_show(result, "pure_laplace");
     cv_write(result, save_dir + "pure_laplace.png");
 
+
     // 其它经典例子
-    input_dir = "./images/output/1/";
-    background = cv::imread(input_dir + "background.jpg");
-    foreground = cv::imread(input_dir + "src_image.png");
+    input_dir = "../images/edit/1/";
+    background = cv::imread(input_dir + "bg.jpg");
+    foreground = cv::imread(input_dir + "fg.jpg");
+    mask = cv::imread(input_dir + "mask.jpg", cv::IMREAD_GRAYSCALE);
+    result = possion_seamless_clone(foreground, background,mask, {30, 100}, true);
+    cv_show(result, "demo_2");
+    cv_write(result, save_dir + "mixed_splited_laplace_2.png");
+
+
+    input_dir = "../images/edit/4/";
+    save_dir = "./images/output/4/";
+    background = cv::imread(input_dir + "background.png");
+    foreground = cv::imread(input_dir + "foreground.png");
     mask = cv::imread(input_dir + "mask.png", cv::IMREAD_GRAYSCALE);
+    result = possion_seamless_clone(foreground, background, mask, {200, 33}, false);
+    cv_show(result, "demo_3");
+    cv_write(result, save_dir + "mixed_splited_laplace_3.png");
+
+
+//    input_dir = "../images/edit/2/";
+//    save_dir = "./images/output/2/";
+//    background = cv::imread(input_dir + "bg.jpg");
+//    foreground = cv::imread(input_dir + "fg.jpg");
+//    mask = cv::imread(input_dir + "mask.jpg", cv::IMREAD_GRAYSCALE);
+//    result = possion_seamless_clone(foreground, background, mask, {100, 100}, false);
+//    cv_show(result, "demo_4");
+//    cv_write(result, save_dir + "pure_laplace_4.png");
+//    result = possion_seamless_clone(foreground, background, mask, {100, 100}, true);
+//    cv_show(result, "demo_4");
+//    cv_write(result, save_dir + "mixed_splited_laplace_4.png");
+
+
+    input_dir = "../images/edit/5/";
+    save_dir = "./images/output/5/";
+    background = cv::imread(input_dir + "background.png");
+    foreground = cv::imread(input_dir + "foreground.png");
+    mask = cv::imread(input_dir + "mask.png", cv::IMREAD_GRAYSCALE);
+    result = possion_seamless_clone(foreground, background, mask, {60, 0}, false);
+    cv_show(result, "demo_5");
+    cv_write(result, save_dir + "pure_laplace_5.png");
+    result = possion_seamless_clone(foreground, background, mask, {60, 0}, true);
+    cv_show(result, "demo_5");
+    cv_write(result, save_dir + "mixed_splited_laplace_5.png");
+
+
+    input_dir = "../images/edit/6/";
+    save_dir = "./images/output/6/";
+    background = cv::imread(input_dir + "background.png");
+    foreground = cv::imread(input_dir + "foreground.png");
+    mask = cv::imread(input_dir + "mask.png", cv::IMREAD_GRAYSCALE);
+    result = possion_seamless_clone(foreground, background, mask, {120, 100}, false);
+    cv_show(result, "demo_6");
+    cv_write(result, save_dir + "pure_laplace_6.png");
+    result = possion_seamless_clone(foreground, background, mask, {120, 100}, true);
+    cv_show(result, "demo_6");
+    cv_write(result, save_dir + "mixed_splited_laplace_6.png");
+
+
+    input_dir = "../images/edit/7/";
+    save_dir = "./images/output/7/";
+    background = cv::imread(input_dir + "background.png");
+    foreground = cv::imread(input_dir + "foreground_1.png");
+    mask = cv::imread(input_dir + "mask_1.png", cv::IMREAD_GRAYSCALE);
+    result = possion_seamless_clone(foreground, background, mask, {10, 40}, true);
+    foreground = cv::imread(input_dir + "foreground_2.png");
+    mask = cv::imread(input_dir + "mask_2.png", cv::IMREAD_GRAYSCALE);
+    result = possion_seamless_clone(foreground, result, mask, {200, 40}, true);
+    cv_show(result, "demo_7");
+    cv_write(result, save_dir + "pure_laplace_7.png");
+
+
+    input_dir = "../images/edit/8/";
+    save_dir = "./images/output/8/";
+    background = cv::imread(input_dir + "background.png");
+    cv::resize(background, background, cv::Size(background.cols + 100, background.rows));
+    foreground = cv::imread(input_dir + "foreground_1.png");
+    mask = cv::imread(input_dir + "mask_1.png", cv::IMREAD_GRAYSCALE);
+    result = possion_seamless_clone(foreground, background, mask, {100, 40}, true);
+    foreground = cv::imread(input_dir + "foreground_2.png");
+    mask = cv::imread(input_dir + "mask_2.png", cv::IMREAD_GRAYSCALE);
+    result = possion_seamless_clone(foreground, result, mask, {240, 60}, true);
+    cv_show(result, "demo_8");
+    cv_write(result, save_dir + "pure_laplace_8.png");
+
+
+    input_dir = "../images/edit/9/";
+    save_dir = "./images/output/9/";
+    background = cv::imread(input_dir + "background.png");
+    foreground = cv::imread(input_dir + "foreground_1.png");
+    mask = cv::imread(input_dir + "mask_1.png", cv::IMREAD_GRAYSCALE);
+    cv::resize(mask, mask, cv::Size(mask.cols + 30, mask.rows));
+    cv::resize(foreground, foreground, cv::Size(foreground.cols + 30, foreground.rows));
+    result = possion_seamless_clone(foreground, background, mask, {105, 340}, true);
+    foreground = cv::imread(input_dir + "foreground_2.png");
+    mask = cv::imread(input_dir + "mask_2.png", cv::IMREAD_GRAYSCALE);
+    cv::resize(mask, mask, cv::Size(mask.cols - 20, mask.rows));
+    cv::resize(foreground, foreground, cv::Size(foreground.cols - 20, foreground.rows));
+    result = possion_seamless_clone(foreground, result, mask, {120, 30}, false);
+    cv_show(result, "demo_9");
+    cv_write(result, save_dir + "pure_laplace_9.png");
 }
 
+
+
+void possion_edit_demo_1() {
+    // 读取图像
+    std::string input_dir("../images/edit/10/");
+    std::string save_dir("./images/output/10/");
+    cv::Mat background = cv::imread(input_dir + "background.png");
+    cv::Mat mask = cv::imread(input_dir + "mask.png", cv::IMREAD_GRAYSCALE);
+
+    // 选取目标图中的局部区域, 这里是一朵花
+    cv::Mat foreground = background(cv::Rect(19, 85, mask.cols, mask.rows)).clone();
+    const int H = foreground.rows;
+    const int W = foreground.cols;
+    const int C = foreground.channels();
+    assert(C == 3);
+    // 求解要插入的内容的散度, 也可与背景图散度相融合
+    const auto divergence = get_divergence(foreground, foreground, false);
+
+    // 更改三个通道的梯度
+    int length = H * W;
+    int length_2 = length * C;
+    std::vector<float> temp(length * C);
+    std::copy(divergence.begin(), divergence.end(), temp.begin());
+    for(int i = 0;i < length_2; i += C) {
+        temp[i] /= 2;
+        temp[i + 1] /= 2;
+        temp[i + 2] *= 1.5;
+    }
+
+    // 根据泊松方程的条件, Ax = b, 构建 A, b 求解 x(不规则区域要填充的值)
+    auto modified = build_and_solve_poisson_equations(foreground, temp, mask);
+    cv::Mat destination = background.clone();
+    for(const auto & item : modified) {
+        const int pos = (85 + item.first / W) * destination.cols * C + (19 + item.first % W) * C;
+        for(int ch = 0; ch < C; ++ch) destination.data[pos + ch] = item.second[ch];
+    }
+    cv_show(destination);
+    cv_write(destination, save_dir + "color_change_1.png");
+
+
+    // 换另一种方式更改各通道的梯度信息
+    std::copy(divergence.begin(), divergence.end(), temp.begin());
+    for(int i = 0;i < length_2; i += C) {
+        std::swap(temp[i], temp[i + 1]);
+    }
+    modified = build_and_solve_poisson_equations(foreground, temp, mask);
+    for(const auto & item : modified) {
+        const int pos = (85 + item.first / W) * destination.cols * C + (19 + item.first % W) * C;
+        for(int ch = 0; ch < C; ++ch) destination.data[pos + ch] = item.second[ch];
+    }
+    cv_show(destination);
+    cv_write(destination, save_dir + "color_change_2.png");
+}
+
+
+
+
+
+void possion_texture_flatten_demo() {
+    // 读取图像
+    std::string input_dir("../images/edit/11/");
+    std::string save_dir("./images/output/11/");
+    cv::Mat background = cv::imread(input_dir + "background.png", cv::IMREAD_GRAYSCALE);
+    cv::Mat mask = cv::imread(input_dir + "mask.png", cv::IMREAD_GRAYSCALE);
+
+    // 选取目标图中的局部区域, 这里是一朵花, 需要恰好对应, 位置不能变动
+    cv::Mat foreground = background(cv::Rect(54, 127, mask.cols, mask.rows)).clone();
+    const int H = foreground.rows;
+    const int W = foreground.cols;
+    const int C = foreground.channels();
+    // 求解要插入的内容的散度, 也可与背景图散度相融合
+    const auto divergence = get_divergence(foreground, foreground, false);
+
+    // 更改三个通道的梯度
+    int length = H * W;
+    int length_2 = length * C;
+    std::vector<float> temp(length * C);
+    std::copy(divergence.begin(), divergence.end(), temp.begin());
+    for(int i = 0;i < length_2; ++i) {
+        if(std::abs(temp[i]) < 5) temp[i] = 0;
+    }
+
+    // 根据泊松方程的条件, Ax = b, 构建 A, b 求解 x(不规则区域要填充的值)
+    auto modified = build_and_solve_poisson_equations(foreground, temp, mask);
+    cv::Mat destination = background.clone();
+    for(const auto & item : modified) {
+        const int pos = (127 + item.first / W) * destination.cols * C + (54 + item.first % W) * C;
+        for(int ch = 0; ch < C; ++ch) destination.data[pos + ch] = item.second[ch];
+    }
+    cv_show(destination);
+    cv_write(destination, save_dir + "color_change_1.png");
+
+}
 
 
 int main() {
 
     // 无缝隙合成图像
-    seamless_cloning_demo();
+    // seamless_cloning_demo();
+
+    // 各种利用梯度的应用
+    // possion_edit_demo_1();
+
+    // 纹理抹平这里失败了
+    possion_texture_flatten_demo();
 
     return 0;
 }
