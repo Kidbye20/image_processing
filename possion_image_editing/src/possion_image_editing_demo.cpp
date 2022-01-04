@@ -38,7 +38,14 @@ namespace {
 }
 
 
-std::vector<float> get_divergence(const cv::Mat& fore, const cv::Mat& back, const bool mix=true) {
+enum class EDIT_MODE {
+    SEAMLESS_CLONE = 0,
+    TEXTURE_FLATTEN = 1,
+    CONTENT_FLIP = 2
+};
+
+
+std::vector<float> get_divergence(const cv::Mat& fore, const cv::Mat& back, const bool mix=true, const EDIT_MODE mode=EDIT_MODE::SEAMLESS_CLONE) {
     // 获取图像信息
     const int H = back.rows;
     const int W = back.cols;
@@ -76,9 +83,13 @@ std::vector<float> get_divergence(const cv::Mat& fore, const cv::Mat& back, cons
                 } else {
                     float grad_sum = 0;
                     for(int k = 0;k < 4; ++k) {
-                        const float lhs = fore_ptr[start + offset[k]] - fore_ptr[start];
+                        float lhs = fore_ptr[start + offset[k]] - fore_ptr[start];
+                        // 纹理抹平, 在这里抹, mix 必须为 false, 代码还不够多变, 加入了这么多 if else 速度下降啊
+                        if(mode == EDIT_MODE::TEXTURE_FLATTEN and !mix and std::abs(lhs) < 7)
+                            lhs = 0;
                         if(not mix) grad_sum += lhs; // 如果不考虑背景图像的梯度信息
                         else {
+                            // 前景和背景的梯度信息融合
                             const float rhs = back_ptr[start + offset[k]] - back_ptr[start];
                             if(std::abs(lhs) > std::abs(rhs)) grad_sum += lhs;
                             else grad_sum += rhs;
@@ -110,10 +121,9 @@ cloned_type build_and_solve_poisson_equations(
         if(mask.data[i] > 128)
             book[i] = pixel_cnt++;
     // 构建 Ax = b 线性方程, 需要填充 A 和 b 的值
-    const int CH = back.channels();
     std::vector< Eigen::Triplet<float> > A_list; // 这个比 Eigen 稀疏矩阵 insert 要快很多
     A_list.reserve(pixel_cnt * 5);
-    Eigen::MatrixXf b(pixel_cnt, CH);
+    Eigen::MatrixXf b(pixel_cnt, C);
     b.setZero();
     const uchar* const back_data = back.ptr<uchar>();
     for (int i = 1; i < H - 1; ++i) {
@@ -124,20 +134,21 @@ cloned_type build_and_solve_poisson_equations(
             if (pid == -1) continue;
             // A 的赋值
             A_list.emplace_back(pid, pid, -4.0);
-            std::vector<float> missing(CH);
+            std::vector<float> missing(C);
             std::vector<int> offset({-1, 1, -W, W});
             for(int ori = 0;ori < 4; ++ori) { // 上下左右四个点的赋值
                 const int pos = center + offset[ori];
                 if(book[pos] == -1) // 如果旁边这个点在边界上, b 的这一项要等于 0, 右边系数 -1
-                    for(int k = 0;k < CH; ++k)
-                        missing[k] += 1.f * back_data[CH * pos + k];
+                    for(int k = 0;k < C; ++k)
+                        missing[k] += 1.f * back_data[C * pos + k];
                 else A_list.emplace_back(pid, book[pos], 1.0);
             }
             // b 的赋值
-            for(int k = 0; k < CH; ++k)
-                b(pid, k) = divergence[CH * center + k] - missing[k];
+            for(int k = 0; k < C; ++k)
+                b(pid, k) = divergence[C * center + k] - missing[k];
         }
     }
+
     // Eigen3 解稀疏矩阵的非线性方程组 Ax = b
     Eigen::SparseMatrix<float> A(pixel_cnt, pixel_cnt);
     A.setFromTriplets(A_list.begin(), A_list.end());
@@ -167,7 +178,8 @@ cv::Mat possion_seamless_clone(
         const cv::Mat& background,
         const cv::Mat& mask,
         const std::pair<int, int> start,
-        const bool mix=true) {
+        const bool mix=true,
+        const EDIT_MODE mode=EDIT_MODE::SEAMLESS_CLONE) {
 
     // 异常处理
     assert(not foreground.empty() and "前景图 foreground 读取失败 !");
@@ -187,7 +199,7 @@ cv::Mat possion_seamless_clone(
     const auto background_crop = background(cv::Rect(start.second, start.first, W, H)).clone();
 
     // 求解要插入的内容的散度, 也可与背景图散度相融合
-    const auto divergence = get_divergence(foreground, background_crop, mix);
+    const auto divergence = get_divergence(foreground, background_crop, mix, mode);
 
     // 根据泊松方程的条件, Ax = b, 构建 A, b 求解 x(不规则区域要填充的值)
     const auto modified = build_and_solve_poisson_equations(background_crop, divergence, mask);
@@ -242,18 +254,29 @@ void seamless_cloning_demo() {
     cv_show(result, "demo_3");
     cv_write(result, save_dir + "mixed_splited_laplace_3.png");
 
+    /* 这个例子会报错, 应该是线性方程组无解
+    input_dir = "../images/edit/2/";
+    save_dir = "./images/output/2/";
+    background = cv::imread(input_dir + "bg.jpg");
+    foreground = cv::imread(input_dir + "fg.jpg");
+    mask = cv::imread(input_dir + "mask.jpg", cv::IMREAD_GRAYSCALE);
+    result = possion_seamless_clone(foreground, background, mask, {100, 100}, false);
+    cv_show(result, "demo_4");
+    cv_write(result, save_dir + "mixed_splited_laplace_4.png");
+    */
 
-//    input_dir = "../images/edit/2/";
-//    save_dir = "./images/output/2/";
-//    background = cv::imread(input_dir + "bg.jpg");
-//    foreground = cv::imread(input_dir + "fg.jpg");
-//    mask = cv::imread(input_dir + "mask.jpg", cv::IMREAD_GRAYSCALE);
-//    result = possion_seamless_clone(foreground, background, mask, {100, 100}, false);
-//    cv_show(result, "demo_4");
-//    cv_write(result, save_dir + "pure_laplace_4.png");
-//    result = possion_seamless_clone(foreground, background, mask, {100, 100}, true);
-//    cv_show(result, "demo_4");
-//    cv_write(result, save_dir + "mixed_splited_laplace_4.png");
+    input_dir = "../images/edit/2/";
+    save_dir = "./images/output/2/";
+    background = cv::imread(input_dir + "background.jpg");
+    foreground = cv::imread(input_dir + "foreground.png");
+    mask = cv::imread(input_dir + "mask.png", cv::IMREAD_GRAYSCALE);
+    result = possion_seamless_clone(foreground, background, mask, {100, 100}, false);
+    cv_show(result, "demo_4");
+    cv_write(result, save_dir + "pure_laplace_4.png");
+
+    result = possion_seamless_clone(foreground, background, mask, {100, 100}, true);
+    cv_show(result, "demo_4");
+    cv_write(result, save_dir + "mixed_splited_laplace_4.png");
 
 
     input_dir = "../images/edit/5/";
@@ -391,46 +414,89 @@ void possion_texture_flatten_demo() {
     cv::Mat background = cv::imread(input_dir + "background.png", cv::IMREAD_GRAYSCALE);
     cv::Mat mask = cv::imread(input_dir + "mask.png", cv::IMREAD_GRAYSCALE);
 
-    // 选取目标图中的局部区域, 这里是一朵花, 需要恰好对应, 位置不能变动
+    // 选取目标图中的局部区域
     cv::Mat foreground = background(cv::Rect(54, 127, mask.cols, mask.rows)).clone();
+
+    cv::Mat result = possion_seamless_clone(
+            foreground, background, mask, {127, 54}, false, EDIT_MODE::TEXTURE_FLATTEN);
+
+    cv_show(result);
+    cv_write(result, save_dir + "texture_flatten_1.png");
+}
+
+
+
+void possion_content_flip_demo() {
+        // 读取图像
+    std::string input_dir("../images/edit/13/");
+    std::string save_dir("./images/output/13/");
+    cv::Mat background = cv::imread(input_dir + "background.png");
+    cv::Mat mask = cv::imread(input_dir + "mask_2.png", cv::IMREAD_GRAYSCALE);
+
+    // 保留叶子
+    cv::Mat foreground = background(cv::Rect(50, 9, mask.cols, mask.rows)).clone();
+    // cv_show(foreground);
+
+    // 找个空白区域
+    cv::Mat foreground_2 = background(cv::Rect(180, 9, mask.cols, mask.rows)).clone();
+
+    cv::Mat result = possion_seamless_clone(
+            foreground_2, background, mask, {9, 50}, false);
+
+    // cv_show(result);
+    cv_write(result, save_dir + "content_flip_1.png");
+
+
     const int H = foreground.rows;
     const int W = foreground.cols;
     const int C = foreground.channels();
+    assert(C == 3);
     // 求解要插入的内容的散度, 也可与背景图散度相融合
-    const auto divergence = get_divergence(foreground, foreground, false);
+    const auto divergence = get_divergence(foreground, foreground, true);
 
-    // 更改三个通道的梯度
+    // 在这里对图像进行翻转
     int length = H * W;
     int length_2 = length * C;
     std::vector<float> temp(length * C);
     std::copy(divergence.begin(), divergence.end(), temp.begin());
-    for(int i = 0;i < length_2; ++i) {
-        if(std::abs(temp[i]) < 5) temp[i] = 0;
+    for(int i = 0;i < H; ++i) {
+        for(int j = 0;j < W; ++j) {
+            const int pos = i * W * C + j * C;
+            const int pos_2 = i * W * C + (W - 1 - j) * C;
+            for(int k = 0;k < C; ++k)
+                temp[pos + k] = divergence[pos_2 - k];
+        }
     }
+    // mask 也要 flip
+    cv::flip(mask, mask, 0);
+
 
     // 根据泊松方程的条件, Ax = b, 构建 A, b 求解 x(不规则区域要填充的值)
     auto modified = build_and_solve_poisson_equations(foreground, temp, mask);
-    cv::Mat destination = background.clone();
+    cv::Mat destination = result.clone();
     for(const auto & item : modified) {
-        const int pos = (127 + item.first / W) * destination.cols * C + (54 + item.first % W) * C;
+        const int pos = (9 + item.first / W) * destination.cols * C + (20 + mask.cols + item.first % W) * C;
         for(int ch = 0; ch < C; ++ch) destination.data[pos + ch] = item.second[ch];
     }
     cv_show(destination);
-    cv_write(destination, save_dir + "color_change_1.png");
-
+    cv_write(destination, save_dir + "content_flip_2.png");
 }
+
 
 
 int main() {
 
     // 无缝隙合成图像
-    // seamless_cloning_demo();
+    seamless_cloning_demo();
 
     // 各种利用梯度的应用
-    // possion_edit_demo_1();
+    possion_edit_demo_1();
 
-    // 纹理抹平这里失败了
+    // 纹理抹平
     possion_texture_flatten_demo();
+
+    // 内容翻转
+    possion_content_flip_demo();
 
     return 0;
 }
