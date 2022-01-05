@@ -2,6 +2,14 @@ cmake_minimum_required(VERSION 3.12)
 set (CMAKE_C_COMPILER "D:/environments/C++/MinGW_posix_sjlj/mingw64/bin/gcc.exe")
 set (CMAKE_CXX_COMPILER "D:/environments/C++/MinGW_posix_sjlj/mingw64/bin/g++.exe")
 
+# 设置 ccache 加快编译速度
+find_program(CCACHE_FOUND ccache)
+if(CCACHE_FOUND)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+endif(CCACHE_FOUND)
+
+
 project(possion_image_editing)
 
 # 添加编译选项
@@ -27,12 +35,7 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 # 链接 opencv 动态库路径
 link_directories(${OpenCV_LIBRARY_DIRS})
 
-# 设置 ccache 加快编译速度
-find_program(CCACHE_FOUND ccache)
-if(CCACHE_FOUND)
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
-endif(CCACHE_FOUND)
+
 
 # 设置 Eigen3
 include_directories(D:/environments/C++/3rdparty/Eigen3/eigen-3.3.9/installed/include/eigen3)

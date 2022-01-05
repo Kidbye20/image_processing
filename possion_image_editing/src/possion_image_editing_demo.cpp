@@ -1,7 +1,12 @@
+// C++
+#include <vector>
+#include <chrono>
+#include <iostream>
+#include <functional>
+// OpenCV
 #include <opencv2/opencv.hpp>
+// Eigen3
 #include <Eigen/Sparse>
-#include <Eigen/Dense>
-#include <bitset>
 
 
 
@@ -41,7 +46,8 @@ namespace {
 enum class EDIT_MODE {
     SEAMLESS_CLONE = 0,
     TEXTURE_FLATTEN = 1,
-    CONTENT_FLIP = 2
+    CONTENT_FLIP = 2,
+    ILLUMINATION_CHANGE = 3
 };
 
 
@@ -87,7 +93,11 @@ std::vector<float> get_divergence(const cv::Mat& fore, const cv::Mat& back, cons
                         // 纹理抹平, 在这里抹, mix 必须为 false, 代码还不够多变, 加入了这么多 if else 速度下降啊
                         if(mode == EDIT_MODE::TEXTURE_FLATTEN and !mix and std::abs(lhs) < 7)
                             lhs = 0;
-                        if(not mix) grad_sum += lhs; // 如果不考虑背景图像的梯度信息
+                        // 亮度变换
+                        else if(mode == EDIT_MODE::ILLUMINATION_CHANGE and !mix) {
+                            lhs = std::pow(std::abs(lhs) / 255, 0.8) * lhs;
+                        }
+                        if(!mix) grad_sum += lhs; // 如果不考虑背景图像的梯度信息
                         else {
                             // 前景和背景的梯度信息融合
                             const float rhs = back_ptr[start + offset[k]] - back_ptr[start];
@@ -189,6 +199,7 @@ cv::Mat possion_seamless_clone(
     assert(foreground.rows == mask.rows and foreground.cols == mask.cols and "前景图和 mask 的尺寸不对等 !");
     assert(start.first >= 0 and start.second >= 0 and "插入的起始位置不能为负 !");
     assert(start.first + foreground.rows <= background.rows and start.second + foreground.cols <= background.cols and "插入位置超出了背景图的界限 !");
+    assert(foreground.isContinuous() and background.isContinuous() and mask.isContinuous());
 
     // 获取图像信息
     const int H = foreground.rows;
@@ -225,6 +236,7 @@ void seamless_cloning_demo() {
 
     cv::Mat result;
 
+
     result = possion_seamless_clone(foreground, background,mask, {134, 140}, true);
     cv_show(result, "mixed and splited laplace");
     cv_write(result, save_dir + "mixed_splited_laplace.png");
@@ -237,12 +249,16 @@ void seamless_cloning_demo() {
 
     // 其它经典例子
     input_dir = "../images/edit/1/";
+    save_dir = "./images/output/1/";
     background = cv::imread(input_dir + "bg.jpg");
     foreground = cv::imread(input_dir + "fg.jpg");
     mask = cv::imread(input_dir + "mask.jpg", cv::IMREAD_GRAYSCALE);
     result = possion_seamless_clone(foreground, background,mask, {30, 100}, true);
     cv_show(result, "demo_2");
     cv_write(result, save_dir + "mixed_splited_laplace_2.png");
+    result = possion_seamless_clone(foreground, background,mask, {30, 100}, false);
+    cv_show(result, "demo_2");
+    cv_write(result, save_dir + "pure_laplace_2.png");
 
 
     input_dir = "../images/edit/4/";
@@ -251,6 +267,10 @@ void seamless_cloning_demo() {
     foreground = cv::imread(input_dir + "foreground.png");
     mask = cv::imread(input_dir + "mask.png", cv::IMREAD_GRAYSCALE);
     result = possion_seamless_clone(foreground, background, mask, {200, 33}, false);
+    cv_show(result, "demo_3");
+    cv_write(result, save_dir + "pure_laplace_3.png");
+
+    result = possion_seamless_clone(foreground, background, mask, {200, 33}, true);
     cv_show(result, "demo_3");
     cv_write(result, save_dir + "mixed_splited_laplace_3.png");
 
@@ -313,7 +333,7 @@ void seamless_cloning_demo() {
     result = possion_seamless_clone(foreground, background, mask, {10, 40}, true);
     foreground = cv::imread(input_dir + "foreground_2.png");
     mask = cv::imread(input_dir + "mask_2.png", cv::IMREAD_GRAYSCALE);
-    result = possion_seamless_clone(foreground, result, mask, {200, 40}, true);
+    result = possion_seamless_clone(foreground, result, mask, {200, 40}, false);
     cv_show(result, "demo_7");
     cv_write(result, save_dir + "pure_laplace_7.png");
 
@@ -347,6 +367,21 @@ void seamless_cloning_demo() {
     result = possion_seamless_clone(foreground, result, mask, {120, 30}, false);
     cv_show(result, "demo_9");
     cv_write(result, save_dir + "pure_laplace_9.png");
+
+
+    input_dir = "../images/edit/14/";
+    save_dir = "./images/output/14/";
+    background = cv::imread(input_dir + "background.png");
+    cv::resize(background, background, cv::Size(160, 160));
+    foreground = cv::imread(input_dir + "foreground.png");
+    mask = cv::imread(input_dir + "mask.png", cv::IMREAD_GRAYSCALE);
+    result = possion_seamless_clone(foreground, background, mask, {35, 30}, true);
+    cv_show(result, "demo_3");
+    cv_write(result, save_dir + "mixed_splited_laplace_14.png");
+    result = possion_seamless_clone(foreground, background, mask, {35, 30}, false);
+    cv_show(result, "demo_3");
+    cv_write(result, save_dir + "pure_laplace_14.png");
+
 }
 
 
@@ -411,7 +446,7 @@ void possion_texture_flatten_demo() {
     // 读取图像
     std::string input_dir("../images/edit/11/");
     std::string save_dir("./images/output/11/");
-    cv::Mat background = cv::imread(input_dir + "background.png", cv::IMREAD_GRAYSCALE);
+    cv::Mat background = cv::imread(input_dir + "background.png");
     cv::Mat mask = cv::imread(input_dir + "mask.png", cv::IMREAD_GRAYSCALE);
 
     // 选取目标图中的局部区域
@@ -484,7 +519,93 @@ void possion_content_flip_demo() {
 
 
 
+
+void seam_clone_demo() {
+    std::string input_dir = "../images/edit/14/";
+    std::string save_dir = "./images/output/14/";
+    cv::Mat background = cv::imread(input_dir + "background.png");
+    cv::Mat foreground = cv::imread(input_dir + "foreground.png");
+    cv::Mat mask = cv::imread(input_dir + "mask.png", cv::IMREAD_GRAYSCALE);
+    cv::resize(background, background, cv::Size(160, 160));
+
+    std::pair<int, int> start({35, 30});
+
+    // 直接粘贴
+    const int length = foreground.rows * foreground.cols;
+    for(int i = 0;i < length; ++i) {
+        if(mask.data[i] > 128) {
+            std::memcpy(background.data + (start.first + int(i / foreground.cols)) * background.cols * background.channels()
+                          + (start.second + int(i % foreground.cols)) * background.channels(),
+                        foreground.data + foreground.channels() * i,
+                        sizeof(uchar) * foreground.channels());
+        }
+    }
+    cv_show(background);
+    cv_write(background, save_dir + "seam_clone.png");
+}
+
+
+
+
+void possion_texture_transform_demo() {
+    std::string input_dir = "../images/edit/17/";
+    std::string save_dir = "./images/output/17/";
+    cv::Mat background = cv::imread(input_dir + "background.png");
+    cv::Mat mask = cv::imread(input_dir + "mask_1.png", cv::IMREAD_GRAYSCALE);
+
+    // 168.5000   61.5000  118.0000  265.0000
+    cv::Mat background_crop = background(cv::Rect(168 - mask.cols + 20, 61, mask.cols, mask.rows)).clone();
+
+    // 直接用背景纹理替代前景的人
+    cv::Mat result = possion_seamless_clone(
+            background_crop, background, mask, {61, 168}, false);
+    cv_write(result, save_dir + "texture_transform_2.png");
+
+    // 163.5000   99.5000   58.0000  124.00001
+    mask = cv::imread(input_dir + "mask_2.png", cv::IMREAD_GRAYSCALE);
+    background_crop = background(cv::Rect(163 - mask.cols, 99, mask.cols, mask.rows)).clone();
+
+    result = possion_seamless_clone(
+            background_crop, result, mask, {99, 163}, false);
+
+    cv_write(result, save_dir + "texture_transform_3.png");
+    cv_show(result);
+
+    // 236.5000   67.5000   18.0000   46.0000
+    mask = cv::imread(input_dir + "mask_3.png", cv::IMREAD_GRAYSCALE);
+    background_crop = background(cv::Rect(236, 67, mask.cols, mask.rows)).clone();
+
+    result = possion_seamless_clone(
+            background_crop, result, mask, {67, 236 - mask.cols}, true);
+
+    cv_write(result, save_dir + "texture_transform_4.png");
+    cv_show(result);
+
+}
+
+
+
+void possion_illumination_change_demo() {
+    std::string input_dir = "../images/edit/16/";
+    std::string save_dir = "./images/output/16/";
+    cv::Mat background = cv::imread(input_dir + "background.png");
+    cv::Mat mask = cv::imread(input_dir + "mask.png", cv::IMREAD_GRAYSCALE);
+
+    // 174.5000  168.5000
+    cv::Mat background_crop = background(cv::Rect(174, 168, mask.cols, mask.rows)).clone();
+
+    // 直接用背景纹理替代前景的人
+    cv::Mat result = possion_seamless_clone(
+            background_crop, background, mask, {168, 174}, false, EDIT_MODE::ILLUMINATION_CHANGE);
+    cv_write(result, save_dir + "illumination_change_1.png");
+    cv_show(result);
+}
+
+
 int main() {
+
+    // 有缝合成
+    seam_clone_demo();
 
     // 无缝隙合成图像
     seamless_cloning_demo();
@@ -497,6 +618,12 @@ int main() {
 
     // 内容翻转
     possion_content_flip_demo();
+
+    // 纹理去除
+    possion_texture_transform_demo();
+
+    // 局部亮度变换
+    possion_illumination_change_demo();
 
     return 0;
 }
