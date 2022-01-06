@@ -283,11 +283,13 @@ cv::Mat rebuild_image_from_laplace_pyramid(
 void laplace_decomposition_demo() {
     // 读取图像
     const std::string image_path("./images/input/a2376-IMG_2891.png");
-    const std::string save_dir("./images/output/");
+    const std::string save_dir("./images/output/compression/1/");
     cv::Mat origin_image = cv::imread(image_path);
     assert(!origin_image.empty() and "图片读取失败");
-    // 构建层数
-    const int layers_num = 5;
+    // 构建层数( 2 ^ layers_num 必须小于高和宽的最小值, 不然是错误的)
+    int layers_num = 5;
+    assert((1 << layers_num) < origin_image.rows and "金字塔层数太大了, 超出了图像的高");
+    assert((1 << layers_num) < origin_image.cols and "金字塔层数太大了, 超出了图像的宽");
     // 根据图像构建高斯金字塔
     const auto gaussi_pyramid = build_gaussi_pyramid(origin_image, layers_num);
     // 构建拉普拉斯金字塔
@@ -299,37 +301,43 @@ void laplace_decomposition_demo() {
         layers_num
         , gaussi_pyramid
     );
+    // 保存一波
+    for(int i = 0;i < layers_num; ++i) cv_write(gaussi_pyramid[i], save_dir + "gaussi_pyramid_" + std::to_string(i) + ".png");
+    cv_write(reconstructed, save_dir + "laplace_reconstructed.png");
 
-    // 从上面可以看出, 如何压缩信息 ?
-    // 最小分辨率的图像 + 拉普拉斯金字塔
-    // 而拉普拉斯金字塔很多都是 0, 所以只需要保留那些大于某个阈值的点的坐标信息, 即可大概还原出图像来
-    // 拉普拉斯金字塔压缩信息(base, detail 分离, 弱化一些不必要的 detail)
+    /*
+        从上面可以看出, 如何压缩信息 ?
+        最小分辨率的图像 + 拉普拉斯金字塔
+        而拉普拉斯金字塔很多都是 0, 所以只需要保留那些大于某个阈值的点的坐标信息, 即可大概还原出图像来
+        拉普拉斯金字塔压缩信息(base, detail 分离, 弱化一些不必要的 detail)
+    */
 
-    // 对拉普拉斯金字塔的结果过滤一些不必要的细节
-    const int threshold = 10;
+    // 对拉普拉斯金字塔的结果过滤一些不必要的细节, 三通道之和小于 30 的都置为 0
+    const int threshold = 30;
     std::vector< std::vector< std::vector<int> > > laplace_pyramid_compressd;
     laplace_pyramid_compressd.reserve(layers_num - 1);
     const int C = origin_image.channels();
     for(auto& layer : laplace_pyramid) {
-        std::vector< std::vector<int> > this_layer;
+        std::vector< std::vector<int> > cur_laplace; // 当前层压缩得到的拉普拉斯金字塔, 保留多少个点, 每个点 4 个信息(位置, 三个通道的值)
         const int length = layer.size() / 3;
         for(int i = 0;i < length; ++i) {
             const int pos = C * i;
             int res_sum = 0.0;
-            for(int k = 0;k < C; ++k)
+            for(int k = 0;k < C; ++k) // 叠加这个点, 在所有通道的细节
                 res_sum += std::abs(layer[pos + k]);
-            // 判断这个点的细节强弱程度
-            if(res_sum > threshold) {
-                std::vector<int> temp(1 + C);
+            if(res_sum > threshold) { // 判断这个点的细节强弱程度, 大于则保留该细节
+                std::vector<int> temp(1 + C); // 收集 4 个信息, 当前点的坐标 i 和 BGR 三通道的值
                 temp[0] = i;
                 for(int k = 0;k < C; ++k) temp[1 + k] = layer[pos + k];
-                this_layer.emplace_back(temp);
+                cur_laplace.emplace_back(temp);
             }
-            else for(int k = 0;k < C; ++k) layer[pos + k] = 0;
+            else // 细节小于于阈值, 删除这个点
+                for(int k = 0;k < C; ++k) layer[pos + k] = 0;
         }
-        std::cout << this_layer.size() << "/" << length << std::endl;
-        laplace_pyramid_compressd.emplace_back(this_layer);
+        std::cout << cur_laplace.size() << "/" << length << std::endl;
+        laplace_pyramid_compressd.emplace_back(cur_laplace);
     }
+    // 为了方便后面从低分辨率小图重建
     std::reverse(laplace_pyramid_compressd.begin(), laplace_pyramid_compressd.end());
     // 重新构建一次
     cv::Mat compressed = rebuild_image_from_laplace_pyramid(
@@ -338,11 +346,15 @@ void laplace_decomposition_demo() {
         layers_num
         , gaussi_pyramid
     );
+    cv_write(compressed, save_dir + "laplace_compressed.png");
 
-    // 压缩前后都写成二进制文件存储, 看下都占据多大存储, 然后测一下重建时间
+    /*
+        根据上面的方法, 对拉普拉斯金字塔压缩, 使用二进制存储到电脑上, 对比存储大小和信息损失
+        对于原始拉普拉斯重建的图像 reconstructed, 写入文件只需要 高、宽、通道数目、数据类型, 以及整个 .data 图像内容
+    */
 
-    // 如果是原图的话, 只需要遍历
-    std::ofstream writer_1("./images/output/reconstructed", std::ios::binary);
+    // 将 reconstructed 按照二进制存储
+    std::ofstream writer_1(save_dir + "reconstructed", std::ios::binary);
     int H_1 = reconstructed.rows;
     int W_1 = reconstructed.cols;
     int C_1 = reconstructed.channels();
@@ -351,76 +363,81 @@ void laplace_decomposition_demo() {
     writer_1.write(reinterpret_cast<const char *>(&info), sizeof(info));
     writer_1.write(reinterpret_cast<const char *>(&reconstructed.data[0]), static_cast<std::streamsize>(length_1));
     writer_1.close();
-
     // 读取这个二进制文件, 重建
     run([&](){
-        std::ifstream reader_1("./images/output/reconstructed", std::ios::binary);
+        std::ifstream reader_1(save_dir + "reconstructed", std::ios::binary);
         int info_2[4];
         reader_1.read((char*)(&info_2), sizeof(info_2));
-        cv::Mat reconstructed_from_file(info_2[0], info_2[1], info_2[3]); // 根据高宽生命图像
-        reader_1.read((char*)(&reconstructed_from_file.data[0]), sizeof(uchar) * info_2[0] * info_2[1] * info_2[2]);
+        cv::Mat reconstructed_from_file(info_2[0], info_2[1], info_2[3]); // 根据高宽和类型重建图像
+        reader_1.read((char*)(&reconstructed_from_file.data[0]), sizeof(uchar) * info_2[0] * info_2[1] * info_2[2]); // 拷贝图像内容
         reader_1.close();
+        cv_write(reconstructed_from_file, save_dir + "reconstructed_from_file.png");
         cv_show(reconstructed_from_file, std::to_string(cv::PSNR(reconstructed, reconstructed_from_file)).c_str());
     }, "从无信息损失的二进制文件中读取  "); // 算时间的话, 要把上面的 cv_show 注释掉
 
-    // 如果是拉普拉斯金字塔压缩过后的图像, 只需要保存最小分辨率的图像和拉普拉斯金字塔
 
-    // 保存最小分辨率的图像
-    std::ofstream writer_2("./images/output/compressed", std::ios::binary);
+    /*
+        如果是拉普拉斯金字塔压缩过后的图像, 只需要保存最小分辨率的图像和拉普拉斯金字塔
+    */
+
+    // 保存最小分辨率的图, 也是保存高、宽、通道数目、数据类型, 以及整个 .data 图像内容
+    std::ofstream writer_2(save_dir + "compressed", std::ios::binary);
     const cv::Mat& start = gaussi_pyramid[layers_num - 1];
     int info_3[4] = {start.rows, start.cols, start.channels(), start.type()};
     int length_2 = sizeof(uchar) * info_3[0] * info_3[1] * info_3[2];
     writer_2.write(reinterpret_cast<const char *>(&info_3), sizeof(info_3));
     writer_2.write(reinterpret_cast<const char *>(&start.data[0]), static_cast<std::streamsize>(length_2));
-    // 现在开始保存压缩之后的拉普拉斯金字塔
-    const int pixel_info = (1 + origin_image.channels());
+    // 保存压缩之后的拉普拉斯金字塔
+    const int pixel_info = (1 + origin_image.channels()); // 每个点有 4 个信息, int 存储
     const int laplace_num = laplace_pyramid_compressd.size();
-    writer_2.write(reinterpret_cast<const char *>(&laplace_num), sizeof(int));
+    writer_2.write(reinterpret_cast<const char *>(&laplace_num), sizeof(int)); // 拉普拉斯金字塔有几层
     for(int i = 0;i < laplace_num; ++i) {
-        const int pixel_num = laplace_pyramid_compressd[i].size();
+        const int pixel_num = laplace_pyramid_compressd[i].size(); // 这一层的拉普拉斯保留了多少个细节点
         writer_2.write(reinterpret_cast<const char *>(&pixel_num), sizeof(int));
-        for(int k = 0;k < pixel_num; ++k)
+        for(int k = 0;k < pixel_num; ++k) // 把每一个保留点的 4 个信息写到文件
             writer_2.write(reinterpret_cast<const char *>(&(laplace_pyramid_compressd[i][k][0])), sizeof(int) * pixel_info);
     }
     writer_2.close();
     // 从压缩过后的信息中恢复原图
     run([&](){
-                std::ifstream reader_2("./images/output/compressed", std::ios::binary);
+        // 先读取低分辨率的小图
+        std::ifstream reader_2(save_dir + "compressed", std::ios::binary);
         int info_4[4];
         reader_2.read((char*)(&info_4), sizeof(info_4));
         cv::Mat reconstructed_from_compressed_file(info_4[0], info_4[1], info_4[3]); // 根据高宽生命图像
         reader_2.read((char*)(&reconstructed_from_compressed_file.data[0]), sizeof(uchar) * info_4[0] * info_4[1] * info_4[2]);
         cv_show(reconstructed_from_compressed_file);
-        // 开始重新打造拉普拉斯金字塔
-        int cur_H = info_4[0], cur_W = info_4[1], cur_C = info_4[2];
+        // 读取压缩过后的拉普拉斯金字塔
+        int cur_H = info_4[0], cur_W = info_4[1], cur_C = info_4[2];  // 获取最开始的分辨率大小
         std::vector< std::vector<int> > laplace_pyramid_reconstructed;
         int laplace_num_2;
-        reader_2.read((char*)(&laplace_num_2), sizeof(int));
+        reader_2.read((char*)(&laplace_num_2), sizeof(int)); // 这个拉普拉斯金字塔有几层
         laplace_pyramid_reconstructed.reserve(laplace_num_2);
         for(int i = 0;i < laplace_num_2; ++i) {
-            cur_H *= 2, cur_W *= 2;
-            std::vector<int> cur_laplace(cur_H * cur_W * cur_C, 0);
+            cur_H *= 2, cur_W *= 2; // 这一层的分辨率是之前的两倍
+            std::vector<int> cur_laplace(cur_H * cur_W * cur_C, 0); // 声明这一层拉普拉斯
             int pixel_num;
-            reader_2.read((char*)(&pixel_num), sizeof(int));
+            reader_2.read((char*)(&pixel_num), sizeof(int)); // 这一层多少个保留的细节点
             for(int p = 0;p < pixel_num; ++p) {
-                // 在 laplace 中找到对应的位置
                 int pos;
-                reader_2.read((char*)(&pos), sizeof(int));
+                reader_2.read((char*)(&pos), sizeof(int)); // 找到这个细节点在 laplace 中的位置
                 int* pos_c = cur_laplace.data() + pos * cur_C;
                 for(int k = 0;k < cur_C; ++k)
-                    reader_2.read((char*)(pos_c + k), sizeof(int));
+                    reader_2.read((char*)(pos_c + k), sizeof(int)); // 这个点的三个通道的值赋值到这一层拉普拉斯
             }
             laplace_pyramid_reconstructed.emplace_back(cur_laplace);
         }
+        // 现在得到的拉普拉斯金字塔的分辨率是逐渐上升的, 但高斯金字塔的分辨率是逐渐降低的, 所以为了对应, 顺序倒过来
         std::reverse(laplace_pyramid_reconstructed.begin(), laplace_pyramid_reconstructed.end());
         reader_2.close();
-
+        // 根据从文件中读到的低分辨率小图 和 压缩的拉普拉斯金字塔, 重建高分辨率图像
         cv::Mat reconstructed_from_compressed = rebuild_image_from_laplace_pyramid(
             gaussi_pyramid[layers_num - 1],
             laplace_pyramid_reconstructed,
             laplace_num_2 + 1
             , gaussi_pyramid
         );
+        cv_write(reconstructed_from_compressed, save_dir + "reconstructed_from_compressed.png");
     }, "根据拉普拉斯金字塔压缩的方法, 恢复图像 ");
 }
 
@@ -431,7 +448,6 @@ int main() {
 
     // 拉普拉斯金字塔分解
     laplace_decomposition_demo();
-
 
 
     return 0;
