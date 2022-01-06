@@ -52,7 +52,7 @@ namespace {
     cv::Mat toint8(const std::vector<T>& source, const int H, const int W, const int C, const int _type) {
         cv::Mat result(H, W, _type);
         const int length = H * W * C;
-        for(int i = 0;i < length; ++i) result.data[i] = std::abs(source[i]);
+        for(int i = 0;i < length; ++i) result.data[i] = cv::saturate_cast<uchar>(std::abs(source[i]) * 2);
         return result;
     }
 }
@@ -221,12 +221,13 @@ void pyramid_upsample_interpolate(const cv::Mat& source) {
 }
 
 
+using res_type = short;
 
-std::vector< std::vector<int> > build_laplace_pyramid(const std::vector<cv::Mat>& gaussi_pyramid) {
+std::vector< std::vector<res_type> > build_laplace_pyramid(const std::vector<cv::Mat>& gaussi_pyramid) {
     // 查看几层
     const int layers_num = gaussi_pyramid.size();
     // 准备一个结果
-    std::vector< std::vector<int> > laplace_pyramid;
+    std::vector< std::vector<res_type> > laplace_pyramid;
     laplace_pyramid.reserve(layers_num - 1);
     // 从低分辨率开始构建拉普拉斯金字塔
     for(int i = layers_num - 1; i >= 1; --i) {
@@ -236,7 +237,7 @@ std::vector< std::vector<int> > build_laplace_pyramid(const std::vector<cv::Mat>
         pyramid_upsample_interpolate(upsampled);
         // 放到拉普拉斯金字塔
         const int length = upsampled.rows * upsampled.cols * upsampled.channels();
-        std::vector<int> residual(length, 0);
+        std::vector<res_type> residual(length, 0);
         for(int k = 0;k < length; ++k)
             residual[k] = gaussi_pyramid[i - 1].data[k] - upsampled.data[k];
         laplace_pyramid.emplace_back(residual);
@@ -246,10 +247,10 @@ std::vector< std::vector<int> > build_laplace_pyramid(const std::vector<cv::Mat>
 }
 
 
-
+using range_type = long;
 cv::Mat rebuild_image_from_laplace_pyramid(
         const cv::Mat& low_res,
-        const std::vector< std::vector<int> >& laplace_pyramid,
+        const std::vector< std::vector<res_type> >& laplace_pyramid,
         const int layers_num,
         const std::vector<cv::Mat>& gaussi_pyramid={}) {
     // 从最低分辨率的开始
@@ -281,6 +282,12 @@ cv::Mat rebuild_image_from_laplace_pyramid(
 
 
 void laplace_decomposition_demo() {
+
+    std::map<const char*, int> config({
+        {"save_no", 2},
+        {"layers_num", 7},
+        {"threshold", 20}
+    });
     // 读取图像
     const std::string image_path("./images/input/a2376-IMG_2891.png");
     const std::string save_dir("./images/output/compression/1/");
@@ -313,23 +320,22 @@ void laplace_decomposition_demo() {
     */
 
     // 对拉普拉斯金字塔的结果过滤一些不必要的细节, 三通道之和小于 30 的都置为 0
-    const int threshold = 30;
-    std::vector< std::vector< std::vector<int> > > laplace_pyramid_compressd;
+    const int threshold = 15;
+    std::vector< std::vector< std::pair<range_type, std::vector<res_type> > > > laplace_pyramid_compressd;
     laplace_pyramid_compressd.reserve(layers_num - 1);
     const int C = origin_image.channels();
     for(auto& layer : laplace_pyramid) {
-        std::vector< std::vector<int> > cur_laplace; // 当前层压缩得到的拉普拉斯金字塔, 保留多少个点, 每个点 4 个信息(位置, 三个通道的值)
+        std::vector< std::pair<range_type, std::vector<res_type> > > cur_laplace; // 当前层压缩得到的拉普拉斯金字塔, 保留多少个点, 每个点 4 个信息(位置, 三个通道的值)
         const int length = layer.size() / 3;
         for(int i = 0;i < length; ++i) {
             const int pos = C * i;
-            int res_sum = 0.0;
+            res_type res_sum = 0.0;
             for(int k = 0;k < C; ++k) // 叠加这个点, 在所有通道的细节
                 res_sum += std::abs(layer[pos + k]);
             if(res_sum > threshold) { // 判断这个点的细节强弱程度, 大于则保留该细节
-                std::vector<int> temp(1 + C); // 收集 4 个信息, 当前点的坐标 i 和 BGR 三通道的值
-                temp[0] = i;
-                for(int k = 0;k < C; ++k) temp[1 + k] = layer[pos + k];
-                cur_laplace.emplace_back(temp);
+                std::vector<res_type> temp(C); // 收集 4 个信息, 当前点的坐标 i 和 BGR 三通道的值
+                for(int k = 0;k < C; ++k) temp[k] = layer[pos + k];
+                cur_laplace.emplace_back(i, temp);
             }
             else // 细节小于于阈值, 删除这个点
                 for(int k = 0;k < C; ++k) layer[pos + k] = 0;
@@ -388,14 +394,19 @@ void laplace_decomposition_demo() {
     writer_2.write(reinterpret_cast<const char *>(&info_3), sizeof(info_3));
     writer_2.write(reinterpret_cast<const char *>(&start.data[0]), static_cast<std::streamsize>(length_2));
     // 保存压缩之后的拉普拉斯金字塔
-    const int pixel_info = (1 + origin_image.channels()); // 每个点有 4 个信息, int 存储
+    const int pixel_info = origin_image.channels(); // 每个点有 4 个信息, int 存储
     const int laplace_num = laplace_pyramid_compressd.size();
     writer_2.write(reinterpret_cast<const char *>(&laplace_num), sizeof(int)); // 拉普拉斯金字塔有几层
     for(int i = 0;i < laplace_num; ++i) {
         const int pixel_num = laplace_pyramid_compressd[i].size(); // 这一层的拉普拉斯保留了多少个细节点
         writer_2.write(reinterpret_cast<const char *>(&pixel_num), sizeof(int));
-        for(int k = 0;k < pixel_num; ++k) // 把每一个保留点的 4 个信息写到文件
-            writer_2.write(reinterpret_cast<const char *>(&(laplace_pyramid_compressd[i][k][0])), sizeof(int) * pixel_info);
+        for(int k = 0;k < pixel_num; ++k) {
+            // 把每一个保留点的 4 个信息写到文件
+            range_type pos = laplace_pyramid_compressd[i][k].first;
+            writer_2.write(reinterpret_cast<const char *>(&pos), sizeof(range_type));
+            const auto& pixel_value = laplace_pyramid_compressd[i][k].second;
+            writer_2.write(reinterpret_cast<const char *>(&pixel_value[0]), sizeof(res_type) * pixel_info);
+        }
     }
     writer_2.close();
     // 从压缩过后的信息中恢复原图
@@ -409,21 +420,21 @@ void laplace_decomposition_demo() {
         cv_show(reconstructed_from_compressed_file);
         // 读取压缩过后的拉普拉斯金字塔
         int cur_H = info_4[0], cur_W = info_4[1], cur_C = info_4[2];  // 获取最开始的分辨率大小
-        std::vector< std::vector<int> > laplace_pyramid_reconstructed;
+        std::vector< std::vector<res_type> > laplace_pyramid_reconstructed;
         int laplace_num_2;
         reader_2.read((char*)(&laplace_num_2), sizeof(int)); // 这个拉普拉斯金字塔有几层
         laplace_pyramid_reconstructed.reserve(laplace_num_2);
         for(int i = 0;i < laplace_num_2; ++i) {
             cur_H *= 2, cur_W *= 2; // 这一层的分辨率是之前的两倍
-            std::vector<int> cur_laplace(cur_H * cur_W * cur_C, 0); // 声明这一层拉普拉斯
+            std::vector<res_type> cur_laplace(cur_H * cur_W * cur_C, 0); // 声明这一层拉普拉斯
             int pixel_num;
             reader_2.read((char*)(&pixel_num), sizeof(int)); // 这一层多少个保留的细节点
             for(int p = 0;p < pixel_num; ++p) {
-                int pos;
-                reader_2.read((char*)(&pos), sizeof(int)); // 找到这个细节点在 laplace 中的位置
-                int* pos_c = cur_laplace.data() + pos * cur_C;
+                range_type pos;
+                reader_2.read((char*)(&pos), sizeof(range_type)); // 找到这个细节点在 laplace 中的位置
+                res_type* pos_c = cur_laplace.data() + pos * cur_C;
                 for(int k = 0;k < cur_C; ++k)
-                    reader_2.read((char*)(pos_c + k), sizeof(int)); // 这个点的三个通道的值赋值到这一层拉普拉斯
+                    reader_2.read((char*)(pos_c + k), sizeof(res_type)); // 这个点的三个通道的值赋值到这一层拉普拉斯
             }
             laplace_pyramid_reconstructed.emplace_back(cur_laplace);
         }
@@ -444,10 +455,84 @@ void laplace_decomposition_demo() {
 
 
 
+
+void laplace_image_blending_demo() {
+    // 读取 lhs, rhs 图像, 以及 mask 图像
+    const std::string input_dir("./images/input/blending/1/");
+    const std::string save_dir("./images/output/blending/1/");
+    cv::Mat left_image = cv::imread(input_dir + "lhs_2.png");
+    cv::Mat right_image = cv::imread(input_dir + "rhs_2.png");
+    cv::resize(left_image, left_image, cv::Size(1024, 1024));
+    cv::resize(right_image, right_image, cv::Size(1024, 1024));
+    const cv::Mat mask = cv::imread(input_dir + "mask_2.png", cv::IMREAD_GRAYSCALE);
+    // 设定金字塔的层数
+    int layers_num = 7;
+    assert(layers_num >= 1);
+    assert((1 << layers_num) < left_image.rows and "金字塔层数太大了, 超出了图像的高");
+    assert((1 << layers_num) < left_image.cols and "金字塔层数太大了, 超出了图像的宽");
+    assert(left_image.rows == right_image.rows and left_image.cols == right_image.cols and mask.rows == left_image.rows and mask.cols == left_image.cols and "左图右图的形状不对 !");
+    // 求左图, 右图的高斯金字塔
+    const auto left_gaussi_pyramid = build_gaussi_pyramid(left_image, layers_num);
+    const auto right_gaussi_pyramid = build_gaussi_pyramid(right_image, layers_num);
+    // 求左图, 右图的拉普拉斯金字塔
+    const auto left_laplace_pyramid = build_laplace_pyramid(left_gaussi_pyramid);
+    const auto right_laplace_pyramid = build_laplace_pyramid(right_gaussi_pyramid);
+    // 求 mask 的高斯金字塔
+    const auto mask_pyramid = build_gaussi_pyramid(mask, layers_num);
+    // 根据 mask 融合拉普拉斯金字塔
+    std::vector< std::vector<res_type> > blend_laplace_pyramid;
+    blend_laplace_pyramid.reserve(layers_num - 1);
+    for(int i = 0; i < layers_num - 1; ++i) {
+        const int cur_C = left_gaussi_pyramid[i].channels();
+        const int cur_length = left_gaussi_pyramid[i].rows * left_gaussi_pyramid[i].cols;
+        std::vector<res_type> this_layer(cur_length * cur_C, 0);
+        const auto& lhs = left_laplace_pyramid[i];
+        const auto& rhs = right_laplace_pyramid[i];
+        for(int ch = 0; ch < cur_C; ++ch) {
+            for(int k = 0;k < cur_length; ++k) {
+                const float left_weight = 1.0f * mask_pyramid[i].data[k] / 255;
+                const int pos = k * cur_C + ch;
+                this_layer[pos] = res_type(left_weight * lhs[pos] + (1 - left_weight) * rhs[pos]);
+            }
+        }
+        blend_laplace_pyramid.emplace_back(this_layer);
+    }
+    // 低分辨率的左图、右图根据 mask 融合得到起始图像
+    const auto& start_mask = mask_pyramid[layers_num - 1];
+    int cur_H = start_mask.rows;
+    int cur_W = start_mask.cols;
+    int cur_C = left_image.channels();
+    const int cur_length = cur_H * cur_W;
+    cv::Mat start(cur_H, cur_W, left_image.type());
+    for(int ch = 0; ch < cur_C; ++ch) {
+        for(int i = 0;i < cur_length; ++i) {
+            const float left_weight = 1.0f * start_mask.data[i] / 255;
+            const int pos = i * cur_C + ch;
+            start.data[pos] = cv::saturate_cast<uchar>(left_weight * left_gaussi_pyramid[layers_num - 1].data[pos]
+                      + (1 - left_weight) * right_gaussi_pyramid[layers_num - 1].data[pos]);
+        }
+    }
+    // 根据 start 和融合之后的 laplace_pyramid, 重构
+    cv::Mat blend_result = rebuild_image_from_laplace_pyramid(
+        start,
+        blend_laplace_pyramid,
+        layers_num
+    );
+    cv_write(blend_result, save_dir + "blend_result_" + std::to_string(layers_num - 1) + ".png");
+    cv_show(blend_result);
+}
+
+
+
+
 int main() {
 
     // 拉普拉斯金字塔分解
-    laplace_decomposition_demo();
+    // laplace_decomposition_demo();
+
+
+    // 拉普拉斯图像融合
+    laplace_image_blending_demo();
 
 
     return 0;
