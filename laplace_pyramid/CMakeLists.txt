@@ -13,7 +13,7 @@ set (CMAKE_CXX_COMPILER "D:/environments/C++/MinGW_posix_sjlj/mingw64/bin/g++.ex
 project(laplace_pyramid)
 
 # 添加编译选项
-SET(CMAKE_CXX_FLAGS "-std=c++14 -O1")
+SET(CMAKE_CXX_FLAGS "-std=c++14 ")
 
 set(PROJECT_SOURCE_DIR ./)
 
