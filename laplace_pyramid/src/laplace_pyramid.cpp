@@ -523,6 +523,8 @@ void laplace_image_blending_demo() {
                     this_layer[pos] = res_type(left_weight * lhs[pos] + (1 - left_weight) * rhs[pos]);
                 }
             }
+            // 这个例子, 高频细节很少很少, 不大看得出来, 到后面全黑了
+            // cv_show(toint8(this_layer, left_gaussi_pyramid[i + 1].rows, left_gaussi_pyramid[i + 1].cols, cur_C, left_gaussi_pyramid[i + 1].type()));
             blend_laplace_pyramid.emplace_back(this_layer);
         }
         // 低分辨率的左图、右图根据 mask 融合得到起始图像
@@ -585,7 +587,6 @@ int main() {
 
     // 拉普拉斯金字塔分解
     // laplace_decomposition_demo();
-
 
     // 拉普拉斯图像融合
     laplace_image_blending_demo();
