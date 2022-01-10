@@ -204,9 +204,9 @@ cv::Mat exposure_fusion(
         // 每张图像对应一个权重图
         for(int k = 0;k < sequence_len; ++k) {
             // 对权重图做高斯模糊
-            // const auto w = fast_gaussi_blur(weights[k], H, W, 2, 0.83);
+            const auto w = fast_gaussi_blur(weights[k], H, W, 2, 0.83);
             const uchar* const cur_image = images_list[k].data;
-            const auto& w = weights[k];
+            // const auto& w = weights[k];
             for(int i = 0;i < length; ++i) {
                 const int p = 3 * i;
                 fused_ptr[p] += w[i] * cur_image[p];
@@ -219,6 +219,98 @@ cv::Mat exposure_fusion(
             fused_ptr[i] = cv::saturate_cast<uchar>(fused_ptr[i]);
     }
     else {
+        // 权重图构造高斯金字塔, 现在还是 std::vector<float>
+        const int layers_num = 5;
+        std::vector< std::vector<cv::Mat> > weights_pyramid;
+        weights_pyramid.reserve(sequence_len);
+        // 先决定每一层的形状
+        std::vector< std::pair<int, int> > size_pyramid({{W, H}});
+        for(int i = 1; i < layers_num; ++i)
+            size_pyramid.emplace_back(size_pyramid[i - 1].first / 2, size_pyramid[i - 1].second / 2);
+        // 先把数据拷贝到 cv::Mat
+        for(int k = 0;k < sequence_len; ++k) {
+            // 先把 vector 数据拷贝到最高分辨率图像上
+            cv::Mat high_res(H, W, CV_32FC1);
+            std::memcpy(high_res.ptr<float>(), weights[k].data(), sizeof(float) * length);
+            // 构建这一层的高斯金字塔
+            std::vector<cv::Mat> this_sequence({high_res});
+            this_sequence.reserve(layers_num - 1);
+            // 开始高斯下采样
+            for(int i = 1; i < layers_num; ++i) {
+                cv::Mat temp;
+                cv::GaussianBlur(this_sequence[i - 1], temp, cv::Size(5, 5), 0.83, 0.83);
+                cv::resize(temp, temp, cv::Size(size_pyramid[i].first, size_pyramid[i].second));
+                this_sequence.emplace_back(temp);
+            }
+            weights_pyramid.emplace_back(this_sequence);
+        }
+        // 图像序列, 分别构造 laplace 金字塔
+        // 先构造高斯金字塔
+        std::vector< std::vector<cv::Mat> > gaussi_pyramid;
+        gaussi_pyramid.reserve(layers_num - 1);
+        for(int k = 0;k < sequence_len; ++k) {
+            std::vector<cv::Mat> this_sequence({images_list[k]});
+            for(int i = 1; i < layers_num; ++i) {
+                cv::Mat temp;
+                cv::GaussianBlur(this_sequence[i - 1], temp, cv::Size(5, 5), 0.83, 0.83);
+                cv::resize(temp, temp, cv::Size(size_pyramid[i].first, size_pyramid[i].second));
+                this_sequence.emplace_back(temp);
+            }
+            for(auto& image : this_sequence) image.convertTo(image, CV_32FC3);
+            gaussi_pyramid.emplace_back(this_sequence);
+        }
+        // 从高斯金字塔的第一层开始上采样, 然后相减得到 laplace 结果
+        std::vector< std::vector<cv::Mat> > laplace_pyramid;
+        for(int k = 0;k < sequence_len; ++k) {
+            std::vector<cv::Mat> this_sequence;
+            auto start = gaussi_pyramid[k].back().clone();
+            for(int i = layers_num - 2; i >= 0; --i) {
+                cv::resize(start, start, cv::Size(size_pyramid[i].first, size_pyramid[i].second));
+                this_sequence.emplace_back(gaussi_pyramid[k][i] - start);
+            }
+            std::reverse(this_sequence.begin(), this_sequence.end());
+            laplace_pyramid.emplace_back(this_sequence);
+        }
+        std::cout << "laplace 构造完毕!\n";
+        // 从最低分辨率开始融合, 首先要得到起始图
+        // 要有所有图片第一层的 weightmap 和 高斯金字塔的第一层结果, 大小是 size 金字塔的第一个
+        int cur_H = size_pyramid.back().second;
+        int cur_W = size_pyramid.back().first;
+        cv::Mat start = cv::Mat::zeros(cur_H, cur_W, CV_8UC3);
+        for(int k = 0;k < sequence_len; ++k) {
+            const auto& low_res_image = gaussi_pyramid[k].back();
+            const auto& low_res_weight = weights_pyramid[k].back();
+            // 现在相加
+            const float* image_ptr = low_res_image.ptr<float>();
+            const float* weight_ptr = low_res_weight.ptr<float>();
+            // 现在图像三通道, weight_ptr 单通道, 我要把这些图的结果都加到 start 里面
+            const int len = cur_H * cur_W;
+            for(int i = 0;i < len; ++i) {
+                const int pos = 3 * i;
+                for(int ch = 0; ch < 3; ++ch)
+                    start.data[pos + ch] += weight_ptr[i] * image_ptr[pos + ch];
+            }
+        }
+        int len = cur_H * cur_W * 3;
+        for(int i = 0;i < len; ++i) start.data[i] = cv::saturate_cast<uchar>(start.data[i]);
+        start.convertTo(start, CV_32FC3);
+        // 得到了起始图像, 和每一层的拉普拉斯, 以及每一层的权重, 开始往高分辨率重构
+        for(int i = layers_num - 2; i >= 0; --i) {
+            // 是不是要先融合每一层的 laplace 和 权重图,
+            cv::Mat weighted_laplace = cv::Mat::zeros(size_pyramid[i].second, size_pyramid[i].first, CV_32FC3);
+            for(int k = 0;k < sequence_len; ++k) {
+                cv::Mat new_weights;
+                std::vector<cv::Mat> new_weights_vector({weights_pyramid[k][i], weights_pyramid[k][i], weights_pyramid[k][i]});
+                cv::merge(new_weights_vector, new_weights);
+                weighted_laplace += new_weights.mul(laplace_pyramid[k][i]);
+            }
+            // 再和当前上采样的结果相加
+            cv::resize(start, start, cv::Size(size_pyramid[i].first, size_pyramid[i].second));
+            start += weighted_laplace;
+        }
+        start.convertTo(start, CV_8UC3);
+        fused = start;
+        start.release();
     }
     return fused;
 }
