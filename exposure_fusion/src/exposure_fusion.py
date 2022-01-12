@@ -8,6 +8,14 @@ import cv2
 import numpy
 
 
+def visualize(sequence_pyramid):
+	S2 = len(sequence_pyramid)
+	layers_num_2 = len(sequence_pyramid[0])
+	_size = sequence_pyramid[0][0].shape[1::-1]
+	display = numpy.concatenate(
+		[cv2.normalize(numpy.concatenate([cv2.resize(sequence_pyramid[s][i], _size) for i in range(layers_num_2)], axis=0), None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX) for s in range(S2)], axis=1)
+	global save_dir
+	cv2.imwrite(os.path.join(save_dir, "sequence_laplace_pyramids.png"), (display * 255).astype("uint8"), [cv2.IMWRITE_PNG_COMPRESSION, 0])
 
 
 def cv_show(image, message="crane"):
@@ -17,9 +25,8 @@ def cv_show(image, message="crane"):
 
 
 
-
 def exposure_fusion(sequence, alphas=(1.0, 1.0, 1.0), best_illumination=0.5, sigma=0.2, eps=1e-12, 
-		use_lappyr=True, use_gaussi=False, layers_num=5, scale=2.0):
+		use_lappyr=True, use_gaussi=False, layers_num=5, scale=2.0, visual=False):
 	# 转化成 float 数据
 	sequence = numpy.stack([it.astype("float32") / 255 for it in sequence], axis=0)
 	S = len(sequence)
@@ -59,7 +66,7 @@ def exposure_fusion(sequence, alphas=(1.0, 1.0, 1.0), best_illumination=0.5, sig
 	# 是否用高斯
 	if(use_gaussi == True):
 		# 使用高斯模糊对 weights 做模糊
-		smoothed_weights = numpy.stack([cv2.GaussianBlur(w, (101, 101), 17) for w in weights], axis=0)
+		smoothed_weights = numpy.stack([cv2.GaussianBlur(w, (49, 49), 8) for w in weights], axis=0)
 		smoothed_weights = normalize(smoothed_weights)
 		smoothed_fusion = numpy.sum(numpy.stack([smoothed_weights, smoothed_weights, smoothed_weights], axis=-1) * sequence, axis=0)
 		smoothed_fusion = numpy.clip(smoothed_fusion, 0, 255).astype("uint8")
@@ -95,7 +102,8 @@ def exposure_fusion(sequence, alphas=(1.0, 1.0, 1.0), best_illumination=0.5, sig
 		sequence_gaussi_pyramids = [build_gaussi_pyramid(sequence[s], layers_num) for s in range(S)]
 		# 求每张图的 laplace 金字塔
 		sequence_laplace_pyramids = [build_laplace_pyramaid(sequence_gaussi_pyramids[s], layers_num) for s in range(S)]
-		# 这里可以归一化
+		# 这里可以归一化, 做可视化
+		if(visual): visualize(sequence_laplace_pyramids)
 		# 每一个尺度, 融合一系列图像的的 laplace 细节, 得到一个融合的 laplace 金字塔
 		fused_laplace_pyramid = [numpy.sum([sequence_laplace_pyramids[k][n] * 
 				numpy.atleast_3d(sequence_weights_pyramids[k][n]) for k in range(S)], axis=0) for n in range(layers_num)]
@@ -114,8 +122,8 @@ def exposure_fusion(sequence, alphas=(1.0, 1.0, 1.0), best_illumination=0.5, sig
 
 
 
-images_dir = "../images/input/5"
-save_dir = "../images/output/5"
+images_dir = "../images/input/9"
+save_dir = "../images/output/9"
 os.makedirs(save_dir, exist_ok=True)
 
 # 读取图片
@@ -128,7 +136,8 @@ fused_results = exposure_fusion(
 	use_lappyr=True, 
 	use_gaussi=True, 
 	layers_num=7,
-	alphas=(1.0, 1.0, 1.0))
+	alphas=(1.0, 1.0, 1.0),
+	visual=False)
 
 # 展示与保存
 for l, r in fused_results.items():
