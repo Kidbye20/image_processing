@@ -1,12 +1,11 @@
 // C++
+#include <map>
 #include <vector>
 #include <chrono>
-#include <fstream>
 #include <iostream>
 #include <functional>
 // OpenCV
 #include <opencv2/opencv.hpp>
-
 
 
 namespace {
@@ -34,7 +33,6 @@ namespace {
         std::cout << "是否连续" << std::boolalpha << one_image.isContinuous() << std::endl;
     }
 
-
     cv::Mat cv_concat(const std::vector<cv::Mat> images, const bool v=false) {
         cv::Mat result;
         if(not v) cv::hconcat(images, result);
@@ -59,10 +57,6 @@ namespace {
 
 
 
-
-
-
-
 namespace {
     inline double fast_exp(const double y) {
         double d;
@@ -74,72 +68,32 @@ namespace {
     inline double square(const double x) {
         return x * x;
     }
-
-    std::vector<float> fast_gaussi_blur(
-            const std::vector<float>& source,
-            const int H,
-            const int W,
-            const int radius=2,
-            const float sigma=0.83) {
-        // 根据半径和方差构造一个高斯模板
-        const int filter_size = 2 * radius + 1;
-        std::vector<float> filter(filter_size, 0);
-        float cur_sum = 0;
-        for(int i = -radius; i <= radius; ++i) {
-            filter[i + radius] = 1.f / sigma * std::exp(-float(i * i) / (2 * sigma * sigma));
-            cur_sum += filter[i + radius];
-        }
-        for(int i = 0;i < filter_size; ++i) filter[i] = filter[i] / cur_sum;
-        // 先做 x 方向的
-        std::vector<float> temp(H * W);
-        // std::memcpy(temp.data(), source.data(), sizeof(float) * H * W);
-        std::copy(source.begin(), source.end(), temp.begin());
-        for(int i = 0; i < H; ++i) {
-            const float* const row_ptr = source.data() + i * W;
-            float* const res_ptr = temp.data() + i * W;
-            for(int j = radius; j < W - radius; ++j) {
-                float intensity_sum = 0.0;
-                for(int k = -radius; k <= radius; ++k)
-                    intensity_sum += filter[k + radius] * row_ptr[j + k];
-                res_ptr[j] = intensity_sum;
-            }
-        }
-        // 再做 y 方向的
-        std::vector<float> blurred(H * W);
-        std::copy(source.begin(), source.end(), blurred.begin());
-        for(int i = radius; i < H - radius; ++i) {
-            for(int j = radius; j < W - radius; ++j) {
-                float intensity_sum = 0.0;
-                for(int k = -radius; k <= radius; ++k)
-                    intensity_sum += filter[k + radius] * temp[(i + k) * W + j];
-                blurred[i * W + j] = intensity_sum;
-            }
-        }
-        return blurred;
-    }
 }
 
 
-cv::Mat exposure_fusion(
-        const std::vector<cv::Mat>& images_list,
+std::map<const std::string, cv::Mat> exposure_fusion(
+        const std::vector<cv::Mat>& sequence,
         const std::tuple<float, float, float>& alphas={1.0, 1.0, 1.0},
+        const bool use_lappyr=true,
+        const int layers_num=5,
         const float best_illumination=0.5,
         const double sigma=0.2) {
+    // 准备一些中间计算所需变量
     const double sigma_inv = 1. / (2 * sigma * sigma);
     const float norm = 1.f / 255;
     // 获取图像信息
-    const int H = images_list.front().rows;
-    const int W = images_list.front().cols;
-    const int C = images_list.front().channels();
+    const int H = sequence.front().rows;
+    const int W = sequence.front().cols;
+    const int C = sequence.front().channels();
     assert(C == 3 and "该算法只支持 RGB24 图像 !");
-    for(const auto& image : images_list)
+    for(const auto& image : sequence)
         assert(image.rows == H and image.cols == W and image.channels() == C and "图像序列的大小必须都一致!");
     const int length = H * W;
     // 看有几张图像
-    const int sequence_len = images_list.size();
+    const int sequence_len = sequence.size();
     // 根据先验知识, 计算对比度、饱和度、亮度, 求权重
-    std::vector< std::vector<float> > weights;
-    for(const auto& image : images_list) {
+    std::vector< cv::Mat > weights;
+    for(const auto& image : sequence) {
         // 【1】根据对比度求权重
         cv::Mat gray;
         cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
@@ -170,150 +124,137 @@ cv::Mat exposure_fusion(
             float* const res_ptr = illumination.data() + i * W;
             for(int j = 0; j < W; ++j) {
                 const int p = 3 * j;
-                res_ptr[j] = std::exp(-square(row_ptr[p] * norm - best_illumination) * sigma_inv)
-                           * std::exp(-square(row_ptr[p + 1] * norm - best_illumination) * sigma_inv)
-                           * std::exp(-square(row_ptr[p + 2] * norm - best_illumination) * sigma_inv);
+                res_ptr[j] = fast_exp(-square(row_ptr[p] * norm - best_illumination) * sigma_inv)
+                           * fast_exp(-square(row_ptr[p + 1] * norm - best_illumination) * sigma_inv)
+                           * fast_exp(-square(row_ptr[p + 2] * norm - best_illumination) * sigma_inv);
             }
         }
-//        cv_show(image);
-//        cv_show(cv_concat({
-//            toint8(contrast, H, W, 1, CV_8UC1, 255.0),
-//            toint8(saturation, H, W, 1, CV_8UC1, 255.0),
-//            toint8(illumination, H, W, 1, CV_8UC1, 255.0)
-//        }));
+        /*
+        cv_show(image);
+        cv_show(cv_concat({
+            toint8(contrast, H, W, 1, CV_8UC1, 255.0),
+            toint8(saturation, H, W, 1, CV_8UC1, 255.0),
+            toint8(illumination, H, W, 1, CV_8UC1, 255.0)
+        }));
+        */
         // 三者结合, 求权重
-        std::vector<float> cur_weight(length, 0);
+        cv::Mat cur_weight(H, W, CV_32F);
+        float* const weight_ptr = cur_weight.ptr<float>();
         for(int i = 0; i < length; ++i)
-            cur_weight[i] = (std::pow(contrast[i], std::get<0>(alphas)) + 1e-3) *
-                            (std::pow(saturation[i], std::get<1>(alphas)) + 1e-3) *
-                            (std::pow(illumination[i], std::get<2>(alphas)) + 1e-4);
+            weight_ptr[i] = std::pow(contrast[i], std::get<0>(alphas)) *
+                            std::pow(saturation[i], std::get<1>(alphas)) *
+                            std::pow(illumination[i], std::get<2>(alphas));
         weights.emplace_back(cur_weight);
     }
+    std::vector<float*> weights_ptrs;
+    for(int k = 0;k < sequence_len; ++k) weights_ptrs.emplace_back(weights[k].ptr<float>());
     // 求归一化的权重
     for(int i = 0;i < length; ++i) {
-        float weight_sum = 0.0;
-        for(int k = 0;k < sequence_len; ++k) weight_sum += weights[k][i];
-        for(int k = 0;k < sequence_len; ++k) weights[k][i] /= weight_sum;
+        float weight_sum = 1e-12;
+        for(int k = 0;k < sequence_len; ++k) weight_sum += weights_ptrs[k][i];
+        for(int k = 0;k < sequence_len; ++k) weights_ptrs[k][i] /= weight_sum;
     }
     // for(int k = 0;k < sequence_len; ++k) cv_show(toint8(weights[k], H, W, 1, CV_8UC1, 255));
-    // 准备融合
-    cv::Mat fused = cv::Mat::zeros(H, W, images_list.front().type());
-    uchar* fused_ptr = fused.data;
+    // 准备融合结果
+    std::map<const std::string, cv::Mat> results;
     // 粗糙的融合
-    if(false) {
+    auto weighted_fusion = [&](const bool use_gaussi=false)
+            ->cv::Mat {
+        cv::Mat fused = cv::Mat::zeros(H, W, sequence.front().type());
+        uchar* fused_ptr = fused.data;
         // 每张图像对应一个权重图
         for(int k = 0;k < sequence_len; ++k) {
             // 对权重图做高斯模糊
-            const auto w = fast_gaussi_blur(weights[k], H, W, 2, 0.83);
-            const uchar* const cur_image = images_list[k].data;
-            // const auto& w = weights[k];
+            cv::Mat blurred;
+            if(use_gaussi) cv::GaussianBlur(weights[k], blurred, cv::Size(49, 49), 8, 8);
+            else blurred = std::ref(weights[k]);
+            const float* const w_ptr = blurred.ptr<float>();
+            const uchar* const cur_image = sequence[k].data;
             for(int i = 0;i < length; ++i) {
                 const int p = 3 * i;
-                fused_ptr[p] += w[i] * cur_image[p];
-                fused_ptr[p + 1] += w[i] * cur_image[p + 1];
-                fused_ptr[p + 2] += w[i] * cur_image[p + 2];
+                fused_ptr[p] += w_ptr[i] * cur_image[p];
+                fused_ptr[p + 1] += w_ptr[i] * cur_image[p + 1];
+                fused_ptr[p + 2] += w_ptr[i] * cur_image[p + 2];
             }
         }
         const int total_length = 3 * length;
-        for(int i = 0;i < total_length; ++i)
-            fused_ptr[i] = cv::saturate_cast<uchar>(fused_ptr[i]);
-    }
-    else {
-        // 权重图构造高斯金字塔, 现在还是 std::vector<float>
-        const int layers_num = 5;
-        std::vector< std::vector<cv::Mat> > weights_pyramid;
-        weights_pyramid.reserve(sequence_len);
-        // 先决定每一层的形状
-        std::vector< std::pair<int, int> > size_pyramid({{W, H}});
-        for(int i = 1; i < layers_num; ++i)
-            size_pyramid.emplace_back(size_pyramid[i - 1].first / 2, size_pyramid[i - 1].second / 2);
-        // 先把数据拷贝到 cv::Mat
-        for(int k = 0;k < sequence_len; ++k) {
-            // 先把 vector 数据拷贝到最高分辨率图像上
-            cv::Mat high_res(H, W, CV_32FC1);
-            std::memcpy(high_res.ptr<float>(), weights[k].data(), sizeof(float) * length);
-            // 构建这一层的高斯金字塔
-            std::vector<cv::Mat> this_sequence({high_res});
-            this_sequence.reserve(layers_num - 1);
-            // 开始高斯下采样
+        for(int i = 0;i < total_length; ++i) fused_ptr[i] = cv::saturate_cast<uchar>(fused_ptr[i]);
+        return fused;
+    };
+    results.emplace("naive", weighted_fusion());
+    results.emplace("gaussi_smoothed", weighted_fusion(true));
+    // 是否使用拉普拉斯金字塔融合
+    if(use_lappyr) {
+        // 检查 layers_num 不要太离谱
+        assert((1 << layers_num) < sequence[0].cols and (1 << layers_num) < sequence[0].rows and "layers 太大, 图像分辨率太低不支持");
+        // 从 high_res 开始构建层数为 layers_num 的高斯金字塔
+        auto build_gaussi_pyramids = [](const cv::Mat& high_res, const int layers_num)
+                -> std::vector<cv::Mat> {
+            std::vector<cv::Mat> this_flash({high_res});
             for(int i = 1; i < layers_num; ++i) {
-                cv::Mat temp;
-                cv::GaussianBlur(this_sequence[i - 1], temp, cv::Size(5, 5), 0.83, 0.83);
-                cv::resize(temp, temp, cv::Size(size_pyramid[i].first, size_pyramid[i].second));
-                this_sequence.emplace_back(temp);
+                cv::Mat blurred;
+                cv::GaussianBlur(this_flash[i - 1], blurred, cv::Size(5, 5), 0.83, 0.83);
+                cv::resize(blurred, blurred, cv::Size(this_flash[i - 1].cols / 2, this_flash[i - 1].rows / 2));
+                this_flash.emplace_back(blurred);
             }
-            weights_pyramid.emplace_back(this_sequence);
-        }
-        // 图像序列, 分别构造 laplace 金字塔
-        // 先构造高斯金字塔
-        std::vector< std::vector<cv::Mat> > gaussi_pyramid;
-        gaussi_pyramid.reserve(layers_num - 1);
+            return this_flash;
+        };
+        // 求每张图的权重的高斯金字塔
+        std::vector< std::vector<cv::Mat> > sequence_weights_pyramids;
+        sequence_weights_pyramids.reserve(sequence_len);
+        cv::Mat high_res(H, W, CV_32FC1);
+        for(int k = 0;k < sequence_len; ++k)
+            sequence_weights_pyramids.emplace_back(build_gaussi_pyramids(weights[k], layers_num));
+        // 提前释放 weights 空间
+        for(int k = 0;k < sequence_len; ++k) weights[k].release();
+        // 求每张图的高斯金字塔
+        std::vector< std::vector<cv::Mat> > sequence_gaussi_pyramids;
+        sequence_gaussi_pyramids.reserve(sequence_len);
+        for(int k = 0;k < sequence_len; ++k)
+            sequence_gaussi_pyramids.emplace_back(build_gaussi_pyramids(sequence[k], layers_num));
+        // 转换数据类型 uchar -> float, 因为后面有减法
+        for(int k = 0;k < sequence_len; ++k)
+            for(int i = 0;i < layers_num; ++i)
+                sequence_gaussi_pyramids[k][i].convertTo(sequence_gaussi_pyramids[k][i], CV_32F);
+        // 求每张图的 laplace 金字塔
+        std::vector< std::vector<cv::Mat> > sequence_laplace_pyramids;
+        sequence_laplace_pyramids.reserve(sequence_len);
         for(int k = 0;k < sequence_len; ++k) {
-            std::vector<cv::Mat> this_sequence({images_list[k]});
-            for(int i = 1; i < layers_num; ++i) {
-                cv::Mat temp;
-                cv::GaussianBlur(this_sequence[i - 1], temp, cv::Size(5, 5), 0.83, 0.83);
-                cv::resize(temp, temp, cv::Size(size_pyramid[i].first, size_pyramid[i].second));
-                this_sequence.emplace_back(temp);
+            auto& gaussi_pyramid = sequence_gaussi_pyramids[k];
+            cv::Mat upsampled = gaussi_pyramid[layers_num - 1].clone();
+            std::vector<cv::Mat> pyramid({upsampled});
+            for(int i = layers_num - 1; i > 0; --i) {
+                cv::resize(gaussi_pyramid[i], upsampled, cv::Size(gaussi_pyramid[i - 1].cols, gaussi_pyramid[i - 1].rows));
+                pyramid.emplace_back(gaussi_pyramid[i - 1] - upsampled);
             }
-            for(auto& image : this_sequence) image.convertTo(image, CV_32FC3);
-            gaussi_pyramid.emplace_back(this_sequence);
+            std::reverse(pyramid.begin(), pyramid.end());
+            sequence_laplace_pyramids.emplace_back(pyramid);
+            for(int i = 0;i < layers_num; ++i) gaussi_pyramid[i].release(); // 释放 gaussi_pyramid 空间, 反正没用了
         }
-        // 从高斯金字塔的第一层开始上采样, 然后相减得到 laplace 结果
-        std::vector< std::vector<cv::Mat> > laplace_pyramid;
-        for(int k = 0;k < sequence_len; ++k) {
-            std::vector<cv::Mat> this_sequence;
-            auto start = gaussi_pyramid[k].back().clone();
-            for(int i = layers_num - 1; i >= 1; --i) {
-                cv::Mat upsampled;
-                cv::resize(gaussi_pyramid[k][i], upsampled, cv::Size(size_pyramid[i - 1].first, size_pyramid[i - 1].second));
-                this_sequence.emplace_back(gaussi_pyramid[k][i - 1] - upsampled);
-            }
-            std::reverse(this_sequence.begin(), this_sequence.end());
-            laplace_pyramid.emplace_back(this_sequence);
-        }
-        std::cout << "laplace 构造完毕!\n";
-        // 从最低分辨率开始融合, 首先要得到起始图
-        // 要有所有图片第一层的 weightmap 和 高斯金字塔的第一层结果, 大小是 size 金字塔的第一个
-        int cur_H = size_pyramid.back().second;
-        int cur_W = size_pyramid.back().first;
-        cv::Mat start = cv::Mat::zeros(cur_H, cur_W, CV_8UC3);
-        for(int k = 0;k < sequence_len; ++k) {
-            const auto& low_res_image = gaussi_pyramid[k].back();
-            const auto& low_res_weight = weights_pyramid[k].back();
-            // 现在相加
-            const float* image_ptr = low_res_image.ptr<float>();
-            const float* weight_ptr = low_res_weight.ptr<float>();
-            // 现在图像三通道, weight_ptr 单通道, 我要把这些图的结果都加到 start 里面
-            const int len = cur_H * cur_W;
-            for(int i = 0;i < len; ++i) {
-                const int pos = 3 * i;
-                for(int ch = 0; ch < 3; ++ch)
-                    start.data[pos + ch] += weight_ptr[i] * image_ptr[pos + ch];
-            }
-        }
-        int len = cur_H * cur_W * 3;
-        for(int i = 0;i < len; ++i) start.data[i] = cv::saturate_cast<uchar>(start.data[i]);
-        start.convertTo(start, CV_32FC3);
-        // 得到了起始图像, 和每一层的拉普拉斯, 以及每一层的权重, 开始往高分辨率重构
-        for(int i = layers_num - 2; i >= 0; --i) {
-            // 是不是要先融合每一层的 laplace 和 权重图,
-            cv::Mat weighted_laplace = cv::Mat::zeros(size_pyramid[i].second, size_pyramid[i].first, CV_32FC3);
-            for(int k = 0;k < sequence_len; ++k) {
+        // 每一个尺度, 融合一系列图像的的 laplace 细节, 得到一个融合的 laplace 金字塔
+        std::vector<cv::Mat> fused_laplace_pyramid;
+        fused_laplace_pyramid.reserve(layers_num);
+        for(int i = 0;i < layers_num; ++i) {
+            cv::Mat weighted_laplace = cv::Mat::zeros(sequence_weights_pyramids[0][i].rows, sequence_weights_pyramids[0][i].cols, CV_32FC3);
+            for(int k = 0; k < sequence_len; ++k) {
                 cv::Mat new_weights;
-                std::vector<cv::Mat> new_weights_vector({weights_pyramid[k][i], weights_pyramid[k][i], weights_pyramid[k][i]});
+                std::vector<cv::Mat> new_weights_vector({sequence_weights_pyramids[k][i], sequence_weights_pyramids[k][i], sequence_weights_pyramids[k][i]});
                 cv::merge(new_weights_vector, new_weights);
-                weighted_laplace += new_weights.mul(laplace_pyramid[k][i]);
+                weighted_laplace += new_weights.mul(sequence_laplace_pyramids[k][i]); // 这里慢了, 拷贝的消耗大, 直接从指针赋值可能快一点
             }
-            // 再和当前上采样的结果相加
-            cv::resize(start, start, cv::Size(size_pyramid[i].first, size_pyramid[i].second));
-            start += weighted_laplace;
+            fused_laplace_pyramid.emplace_back(weighted_laplace);
         }
-        start.convertTo(start, CV_8UC3);
-        fused = start;
-        start.release();
+        // 从最底层开始, 每次上采样加上同等尺度的 laplace 细节
+        cv::Mat fused = fused_laplace_pyramid[layers_num - 1];
+        for(int i = layers_num - 2; i >= 0; --i) {
+            cv::Mat upsampled;
+            cv::resize(fused, upsampled, cv::Size(fused_laplace_pyramid[i].cols, fused_laplace_pyramid[i].rows));
+            fused = upsampled + fused_laplace_pyramid[i];
+        }
+        fused.convertTo(fused, CV_8U);
+        results.emplace("laplace_pyramid", fused);
     }
-    return fused;
+    return results;
 }
 
 
@@ -323,18 +264,19 @@ cv::Mat exposure_fusion(
 int main() {
 
     // 获取图像列表
-    std::vector<cv::Mat> images_list;
-    const std::string sequence_dir("./images/input/1/");
+    std::vector<cv::Mat> sequence;
+    const std::string sequence_dir("./images/input/5/");
     auto sequence_list = ghc::filesystem::directory_iterator(sequence_dir);
     for(const auto& it : sequence_list) {
         cv::Mat current = cv::imread(sequence_dir + it.path().filename().string());
-        images_list.emplace_back(current);
+        if(current.empty()) continue;
+        sequence.emplace_back(current);
     }
-//    std::vector<std::string> images_path({"venice_under.png", "venice_normal.png", "venice_over.png"});
-//    for(const auto& it : images_path)
-//        images_list.emplace_back(cv::imread(sequence_dir + it));
-    const auto fusion_result = exposure_fusion(images_list, {1.0, 1.0, 1.0}, 0.5);
-    cv_show(fusion_result);
-    cv_write(fusion_result, "./images/output/1/fusion_result_failed.png");
+    // 如果 layers_num 降低为 5, 就会有很严重的光晕
+    const auto fusion_result = exposure_fusion(sequence, {1.0, 1.0, 1.0}, true, 7);
+    for(const auto &item : fusion_result) {
+        cv_show(item.second, item.first.c_str());
+        cv_write(item.second, std::string("./images/output/5/C++_" + item.first + ".png"));
+    }
     return 0;
 }

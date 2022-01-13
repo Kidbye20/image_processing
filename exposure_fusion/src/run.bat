@@ -6,6 +6,7 @@ set LIBRAIY=D:/environments/C++/OpenCV/opencv-4.5.2/build_no_qt/install/x64/ming
 set DLL=-llibopencv_highgui452 -llibopencv_core452 -llibopencv_imgcodecs452  -llibopencv_imgproc452 -llibopencv_dnn452
 set ARGS=-std=c++14 -lpthread -O1
 del %exe_file%
-g++ %ARGS%  -I%INCLUDE% -I%EIGEN_DIR% -I../include/ -L %LIBRAIY% possion_image_cloning_demo.cpp  %DLL%  -o %exe_file%
-%exe_file%
+g++ %ARGS%  -I%INCLUDE% -I%EIGEN_DIR% -I../include/ -L %LIBRAIY% exposure_fusion.cpp  %DLL%  -o %exe_file%
+cd ..
+/src/%exe_file%
 pause

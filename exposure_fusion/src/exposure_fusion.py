@@ -122,8 +122,8 @@ def exposure_fusion(sequence, alphas=(1.0, 1.0, 1.0), best_illumination=0.5, sig
 
 
 
-images_dir = "../images/input/9"
-save_dir = "../images/output/9"
+images_dir = "../images/input/5"
+save_dir = "../images/output/5"
 os.makedirs(save_dir, exist_ok=True)
 
 # 读取图片
