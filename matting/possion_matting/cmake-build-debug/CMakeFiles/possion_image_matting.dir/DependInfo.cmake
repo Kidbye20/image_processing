@@ -4,7 +4,7 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "D:/work/crane/algorithm/image_processing/matting/possion_matting/src/possion_matting.cpp" "D:/work/crane/algorithm/image_processing/matting/possion_matting/cmake-build-debug/CMakeFiles/possion_image_matting.dir/src/possion_matting.cpp.obj"
+  "D:/work/crane/algorithm/image_processing/matting/possion_matting/src/others.cpp" "D:/work/crane/algorithm/image_processing/matting/possion_matting/cmake-build-debug/CMakeFiles/possion_image_matting.dir/src/others.cpp.obj"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")
 

@@ -1,5 +1,5 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/possion_image_matting.dir/src/possion_matting.cpp.obj"
+  "CMakeFiles/possion_image_matting.dir/src/others.cpp.obj"
   "bin/possion_image_matting.exe"
   "bin/possion_image_matting.exe.manifest"
   "bin/possion_image_matting.pdb"

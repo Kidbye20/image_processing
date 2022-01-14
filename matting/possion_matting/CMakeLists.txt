@@ -23,7 +23,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/include/)
 
 # 添加可执行文件
-add_executable(possion_image_matting src/possion_matting.cpp)
+add_executable(possion_image_matting src/others.cpp)
 
 # 设置  opencv
 set(OpenCV_DIR "D:/environments/C++/OpenCV/opencv-4.5.2/build_no_qt/install")

@@ -75,28 +75,28 @@ include CMakeFiles/possion_image_matting.dir/progress.make
 # Include the compile flags for this target's objects.
 include CMakeFiles/possion_image_matting.dir/flags.make
 
-CMakeFiles/possion_image_matting.dir/src/possion_matting.cpp.obj: CMakeFiles/possion_image_matting.dir/flags.make
-CMakeFiles/possion_image_matting.dir/src/possion_matting.cpp.obj: CMakeFiles/possion_image_matting.dir/includes_CXX.rsp
-CMakeFiles/possion_image_matting.dir/src/possion_matting.cpp.obj: ../src/possion_matting.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=D:\work\crane\algorithm\image_processing\matting\possion_matting\cmake-build-debug\CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/possion_image_matting.dir/src/possion_matting.cpp.obj"
-	ccache D:\environments\C++\MinGW_posix_sjlj\mingw64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles\possion_image_matting.dir\src\possion_matting.cpp.obj -c D:\work\crane\algorithm\image_processing\matting\possion_matting\src\possion_matting.cpp
+CMakeFiles/possion_image_matting.dir/src/others.cpp.obj: CMakeFiles/possion_image_matting.dir/flags.make
+CMakeFiles/possion_image_matting.dir/src/others.cpp.obj: CMakeFiles/possion_image_matting.dir/includes_CXX.rsp
+CMakeFiles/possion_image_matting.dir/src/others.cpp.obj: ../src/others.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=D:\work\crane\algorithm\image_processing\matting\possion_matting\cmake-build-debug\CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/possion_image_matting.dir/src/others.cpp.obj"
+	ccache D:\environments\C++\MinGW_posix_sjlj\mingw64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles\possion_image_matting.dir\src\others.cpp.obj -c D:\work\crane\algorithm\image_processing\matting\possion_matting\src\others.cpp
 
-CMakeFiles/possion_image_matting.dir/src/possion_matting.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/possion_image_matting.dir/src/possion_matting.cpp.i"
-	D:\environments\C++\MinGW_posix_sjlj\mingw64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E D:\work\crane\algorithm\image_processing\matting\possion_matting\src\possion_matting.cpp > CMakeFiles\possion_image_matting.dir\src\possion_matting.cpp.i
+CMakeFiles/possion_image_matting.dir/src/others.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/possion_image_matting.dir/src/others.cpp.i"
+	D:\environments\C++\MinGW_posix_sjlj\mingw64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E D:\work\crane\algorithm\image_processing\matting\possion_matting\src\others.cpp > CMakeFiles\possion_image_matting.dir\src\others.cpp.i
 
-CMakeFiles/possion_image_matting.dir/src/possion_matting.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/possion_image_matting.dir/src/possion_matting.cpp.s"
-	D:\environments\C++\MinGW_posix_sjlj\mingw64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S D:\work\crane\algorithm\image_processing\matting\possion_matting\src\possion_matting.cpp -o CMakeFiles\possion_image_matting.dir\src\possion_matting.cpp.s
+CMakeFiles/possion_image_matting.dir/src/others.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/possion_image_matting.dir/src/others.cpp.s"
+	D:\environments\C++\MinGW_posix_sjlj\mingw64\bin\g++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S D:\work\crane\algorithm\image_processing\matting\possion_matting\src\others.cpp -o CMakeFiles\possion_image_matting.dir\src\others.cpp.s
 
 # Object files for target possion_image_matting
 possion_image_matting_OBJECTS = \
-"CMakeFiles/possion_image_matting.dir/src/possion_matting.cpp.obj"
+"CMakeFiles/possion_image_matting.dir/src/others.cpp.obj"
 
 # External object files for target possion_image_matting
 possion_image_matting_EXTERNAL_OBJECTS =
 
-bin/possion_image_matting.exe: CMakeFiles/possion_image_matting.dir/src/possion_matting.cpp.obj
+bin/possion_image_matting.exe: CMakeFiles/possion_image_matting.dir/src/others.cpp.obj
 bin/possion_image_matting.exe: CMakeFiles/possion_image_matting.dir/build.make
 bin/possion_image_matting.exe: D:/environments/C++/OpenCV/opencv-4.5.2/build_no_qt/install/x64/mingw/lib/libopencv_gapi452.dll.a
 bin/possion_image_matting.exe: D:/environments/C++/OpenCV/opencv-4.5.2/build_no_qt/install/x64/mingw/lib/libopencv_stitching452.dll.a

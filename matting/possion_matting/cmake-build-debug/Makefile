@@ -141,32 +141,32 @@ possion_image_matting/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\possion_image_matting.dir\build.make CMakeFiles/possion_image_matting.dir/build
 .PHONY : possion_image_matting/fast
 
-src/possion_matting.obj: src/possion_matting.cpp.obj
+src/others.obj: src/others.cpp.obj
 
-.PHONY : src/possion_matting.obj
+.PHONY : src/others.obj
 
 # target to build an object file
-src/possion_matting.cpp.obj:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\possion_image_matting.dir\build.make CMakeFiles/possion_image_matting.dir/src/possion_matting.cpp.obj
-.PHONY : src/possion_matting.cpp.obj
+src/others.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\possion_image_matting.dir\build.make CMakeFiles/possion_image_matting.dir/src/others.cpp.obj
+.PHONY : src/others.cpp.obj
 
-src/possion_matting.i: src/possion_matting.cpp.i
+src/others.i: src/others.cpp.i
 
-.PHONY : src/possion_matting.i
+.PHONY : src/others.i
 
 # target to preprocess a source file
-src/possion_matting.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\possion_image_matting.dir\build.make CMakeFiles/possion_image_matting.dir/src/possion_matting.cpp.i
-.PHONY : src/possion_matting.cpp.i
+src/others.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\possion_image_matting.dir\build.make CMakeFiles/possion_image_matting.dir/src/others.cpp.i
+.PHONY : src/others.cpp.i
 
-src/possion_matting.s: src/possion_matting.cpp.s
+src/others.s: src/others.cpp.s
 
-.PHONY : src/possion_matting.s
+.PHONY : src/others.s
 
 # target to generate assembly for a file
-src/possion_matting.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\possion_image_matting.dir\build.make CMakeFiles/possion_image_matting.dir/src/possion_matting.cpp.s
-.PHONY : src/possion_matting.cpp.s
+src/others.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\possion_image_matting.dir\build.make CMakeFiles/possion_image_matting.dir/src/others.cpp.s
+.PHONY : src/others.cpp.s
 
 # Help Target
 help:
@@ -177,9 +177,9 @@ help:
 	@echo ... edit_cache
 	@echo ... rebuild_cache
 	@echo ... possion_image_matting
-	@echo ... src/possion_matting.obj
-	@echo ... src/possion_matting.i
-	@echo ... src/possion_matting.s
+	@echo ... src/others.obj
+	@echo ... src/others.i
+	@echo ... src/others.s
 .PHONY : help
 
 

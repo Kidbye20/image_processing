@@ -84,7 +84,7 @@
 				</MakeCommands>
 			</Target>
 		</Build>
-		<Unit filename="D:/work/crane/algorithm/image_processing/matting/possion_matting/src/possion_matting.cpp">
+		<Unit filename="D:/work/crane/algorithm/image_processing/matting/possion_matting/src/others.cpp">
 			<Option target="possion_image_matting"/>
 		</Unit>
 		<Unit filename="D:/work/crane/algorithm/image_processing/matting/possion_matting/CMakeLists.txt">
