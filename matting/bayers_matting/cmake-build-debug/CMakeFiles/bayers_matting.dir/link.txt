@@ -1,0 +1,3 @@
+D:\software\editor\CLion\bin\cmake\win\bin\cmake.exe -E rm -f CMakeFiles\bayers_matting.dir/objects.a
+D:\environments\C++\MinGW_posix_sjlj\mingw64\bin\ar.exe cr CMakeFiles\bayers_matting.dir/objects.a @CMakeFiles\bayers_matting.dir\objects1.rsp
+D:\environments\C++\MinGW_posix_sjlj\mingw64\bin\g++.exe -std=c++14 -O1 -g -Wl,--whole-archive CMakeFiles\bayers_matting.dir/objects.a -Wl,--no-whole-archive -o bin\bayers_matting.exe -Wl,--out-implib,libbayers_matting.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\bayers_matting.dir\linklibs.rsp
