@@ -68,7 +68,6 @@ namespace {
         return x * x;
     }
 
-
     void find_unknown_edge(cv::Mat& cur_unknown, const int H, const int W) {
         cv::Mat new_cur_unknown = make_pad(cur_unknown, 1, 1);
         const int W2 = new_cur_unknown.cols;
@@ -85,6 +84,113 @@ namespace {
             }
         }
     }
+
+
+
+
+    // 对前景和后景进行聚类, 定义每个簇
+    class cluster {
+    public:
+        const float norm_inv = 1. / 255;
+        int pixel_num;
+        cv::Mat mu;
+        float max_eigenvalue;
+        cv::Mat e;
+        float* mu_ptr;
+        float *e_ptr;
+        uchar* const _img_ptr;
+        std::vector<int> _pixels;
+        std::vector<float> _W;
+        cluster(uchar* const img_ptr, std::vector<int>& pixels, std::vector<float>& W)
+                : mu(cv::Mat(1, 3, CV_32FC1)), pixel_num(pixels.size()), _img_ptr(img_ptr), _pixels(pixels), _W(W) {
+            // 首先求这些像素的颜色均值
+            mu_ptr = this->mu.ptr<float>();
+            float weight_sum = 0.0;
+            for(int i = 0;i < pixel_num; ++i) {
+                const int pos = 3 * pixels[i]; // 获取像素位置
+                mu_ptr[0] += norm_inv * img_ptr[pos] * W[i];
+                mu_ptr[1] += norm_inv * img_ptr[pos + 1] * W[i];
+                mu_ptr[2] += norm_inv * img_ptr[pos + 2] * W[i];
+                weight_sum += W[i];
+            }
+            for(int ch = 0; ch < 3; ++ch) mu_ptr[ch] /= weight_sum;
+            // 求协方差矩阵
+            cv::Mat diff(pixel_num, 3, CV_32FC1);
+            float* const diff_ptr = diff.ptr<float>();
+            for(int i = 0;i < pixel_num; ++i) {
+                const int pos = 3 * pixels[i];
+                const float sw = std::sqrt(W[i]);
+                diff_ptr[3 * i] = sw * (norm_inv * img_ptr[pos] - mu_ptr[0]);
+                diff_ptr[3 * i + 1] = sw * (norm_inv * img_ptr[pos + 1] - mu_ptr[1]);
+                diff_ptr[3 * i + 2] = sw * (norm_inv * img_ptr[pos + 2] - mu_ptr[2]);
+            }
+            const auto cov = diff.t() * diff / weight_sum + 1e-5 * cv::Mat::eye({3, 3}, CV_32FC1);
+            // 求特征值和特征向量
+            cv::Mat eigen_values, eigen_vector;
+            cv::eigen(cov, eigen_values, eigen_vector);
+            int max_index = 0;
+            max_eigenvalue = std::abs(eigen_values.at<float>(0));
+//            std::cout << eigen_values << std::endl;
+            for(int i = 1;i < eigen_values.rows; ++i) {
+                const float cur = std::abs(eigen_values.at<float>(i));
+                if(max_eigenvalue < cur) {
+                    max_index = i;
+                    max_eigenvalue = cur;
+                }
+            }
+//            std::cout << "max_index  " << max_index << std::endl;
+//            std::cout << eigen_vector << std::endl;
+            this->e = cv::Mat(1, 3, CV_32FC1);
+            this->e_ptr = this->e.ptr<float>();
+            for(int ch = 0; ch < 3; ++ch)
+                this->e_ptr[ch] = eigen_vector.at<float>(ch, max_index);
+            std::cout << "e: " << e << std::endl;
+        }
+        bool operator<(const cluster& rhs) const {
+            return this->max_eigenvalue < rhs.max_eigenvalue;
+        }
+    };
+
+    auto make_clusters = [](uchar* const img_ptr, std::vector<int>& pixels, std::vector<float>& W)
+            ->std::vector< std::pair<cv::Mat, cv::Mat> > {
+
+        cluster fore_cluster(img_ptr, pixels, W);
+        std::vector<cluster> nodes({fore_cluster});
+
+        while(true) {
+            // 获取当前所有簇中特征值最大的
+            auto max_index = std::max_element(nodes.begin(), nodes.end()) - nodes.begin();
+            if(nodes[max_index].max_eigenvalue > 0.05) {
+                auto& origin = nodes[max_index];
+                float threshold = 0;
+                for(int ch = 0;ch < 3; ++ch) threshold += origin.mu_ptr[ch] * origin.e_ptr[ch];
+                // 遍历所有像素,
+                std::vector<int> lhs, rhs;
+                std::vector<float> lhs_w, rhs_w;
+                for(int i = 0;i < origin.pixel_num; ++i) {
+                    const int pos = 3 * origin._pixels[i];
+                    float dis = 0;
+                    for(int ch = 0;ch < 3; ++ch)
+                        dis += origin.norm_inv * origin._img_ptr[pos] * origin.e_ptr[ch];
+                    if(dis < threshold) {
+                        lhs.emplace_back(origin._pixels[i]);
+                        lhs_w.emplace_back(origin._W[i]);
+                    } else {
+                        rhs.emplace_back(origin._pixels[i]);
+                        rhs_w.emplace_back(origin._W[i]);
+                    }
+                }
+                // std::cout << lhs.size() << ",  " << rhs.size() << std::endl;
+                if(lhs.size() >= 1) nodes.emplace_back(origin._img_ptr, lhs, lhs_w);
+                if(rhs.size() >= 1)nodes.emplace_back(origin._img_ptr, rhs, rhs_w);
+            }
+            else break;
+        }
+        std::vector< std::pair<cv::Mat, cv::Mat> > result;
+        for(const auto& item : nodes)
+            result.emplace_back(item.mu, item.e);
+        return result;
+    };
 }
 
 
@@ -199,118 +305,15 @@ void bayers_matting(
                 continue;
             std::cout << pos / W << ", " << pos % W << " ==> " << f_weights.size() << ", " << b_weights.size() << std::endl;
 
-            // 对前景和后景进行聚类, 定义每个簇
-            class cluster {
-            public:
-                const float norm_inv = 1. / 255;
-                int pixel_num;
-                cv::Mat mu;
-                float max_eigenvalue;
-                cv::Mat e;
-                const uchar* const _img_ptr;
-                std::vector<int> _pixels;
-                std::vector<float> _W;
-                cluster(const uchar* const img_ptr, std::vector<int>& pixels, std::vector<float>& W)
-                        : pixel_num(pixels.size()), _img_ptr(img_ptr), _pixels(pixels), _W(W){
-                    // 首先求这些像素的颜色均值
-                    this->mu = cv::Mat(1, 3, CV_32FC1);
-                    float* mu_ptr = this->mu.ptr<float>();
-                    float weight_sum = 0.0;
-                    for(int i = 0;i < pixel_num; ++i) {
-                        const int pos = 3 * pixels[i]; // 获取像素位置
-                        mu_ptr[0] += norm_inv * img_ptr[pos] * W[i];
-                        mu_ptr[1] += norm_inv * img_ptr[pos + 1] * W[i];
-                        mu_ptr[2] += norm_inv * img_ptr[pos + 2] * W[i];
-                        weight_sum += W[i];
-                    }
-                    for(int ch = 0; ch < 3; ++ch) mu_ptr[ch] /= weight_sum;
-                    // 求协方差矩阵
-                    cv::Mat diff(pixel_num, 3, CV_32FC1);
-                    float* const diff_ptr = diff.ptr<float>();
-                    for(int i = 0;i < pixel_num; ++i) {
-                        const int pos = 3 * pixels[i];
-                        const float sw = std::sqrt(W[i]);
-                        diff_ptr[3 * i] = sw * (norm_inv * img_ptr[pos] - mu_ptr[0]);
-                        diff_ptr[3 * i + 1] = sw * (norm_inv * img_ptr[pos + 1] - mu_ptr[1]);
-                        diff_ptr[3 * i + 2] = sw * (norm_inv * img_ptr[pos + 2] - mu_ptr[2]);
-                    }
-                    const auto cov = diff.t() * diff / weight_sum + 1e-5 * cv::Mat::eye({3, 3}, CV_32FC1);
-                    // 求特征值和特征向量
-                    cv::Mat eigen_values, eigen_vector;
-                    cv::eigen(cov, eigen_values, eigen_vector);
-                    int max_index = 0;
-                    max_eigenvalue = std::abs(eigen_values.at<double>(0));
-                    for(int i = 1;i < eigen_values.rows; ++i) {
-                        const float cur = std::abs(eigen_values.at<double>(i));
-                        if(max_eigenvalue < cur) {
-                            max_index = i;
-                            max_eigenvalue = cur;
-                        }
-                    }
-                    std::cout << eigen_vector << std::endl;
-                    this->e = eigen_vector.colRange(max_index - 1, max_index).clone();
-                    std::cout << "e: " << e << std::endl;
-                }
-                bool operator<(const cluster& rhs) const {
-                    return this->max_eigenvalue < rhs.max_eigenvalue;
-                }
-                std::list<cluster> split() {
-                    const float* const mu_ptr = this->mu.ptr<float>();
-                    const float* const e_ptr = this->e.ptr<float>();
-                    float threshold = 0;
-                    for(int ch = 0;ch < 3; ++ch) threshold += mu_ptr[ch] * e_ptr[ch];
-                    // 遍历所有像素,
-                    std::vector<int> lhs, rhs;
-                    std::vector<float> lhs_w, rhs_w;
-                    for(int i = 0;i < this->pixel_num; ++i) {
-                        const int pos = 3 * this->_pixels[i];
-                        float dis = 0;
-                        for(int ch = 0;ch < 3; ++ch)
-                            dis += norm_inv * this->_img_ptr[pos] * e_ptr[ch];
-                        if(dis < threshold) {
-                            lhs.emplace_back(this->_pixels[i]);
-                            lhs_w.emplace_back(this->_W[i]);
-                        } else {
-                            rhs.emplace_back(this->_pixels[i]);
-                            rhs_w.emplace_back(this->_W[i]);
-                        }
-                    }
-                    std::cout << lhs.size() << ",  " << rhs.size() << std::endl;
-                    std::list<cluster> result;
-                    result.emplace_back(cluster(this->_img_ptr, lhs, lhs_w));
-                    result.emplace_back(cluster(this->_img_ptr, rhs, rhs_w));
-                    return result;
-                }
-            };
-            // 根据收集到的点 f_pixels 和 权重 f_weights
-            cluster fore_cluster(foreground.data, f_pixels, f_weights);
+            // 对前景聚类
+            const auto fore_clusters = make_clusters(foreground.data, f_pixels, f_weights);
+            // 对背景聚类
+            const auto back_clusters = make_clusters(background.data, b_pixels, b_weights);
 
-            std::vector<cluster> nodes({fore_cluster});
-
-            while(true) {
-                // 获取当前所有簇中特征值最大的
-                auto max_index = std::max_element(nodes.begin(), nodes.end()) - nodes.begin();
-                std::cout << "max_index  " << max_index << std::endl;
-//                if(nodes[max_index].max_eigenvalue > 0.05) {
-                    // 对当前 nodes[max_index] 做分裂
-                    auto& origin_cluster = nodes[max_index];
-//
-                    auto split_result = origin_cluster.split();
-                    for(auto& item : split_result)
-                        nodes.emplace_back(item);
-//                    nodes.erase(nodes.begin() + max_index);
-//                }
-//                else break;
-                break;
+            if(int(pos / W) == 400 and int(pos % W) == 411) {
+                std::cout << fore_clusters.size() << ", " << back_clusters.size() << std::endl;
+                return;
             }
-
-            std::vector< std::pair<std::vector<float>, cv::Mat> > fore_cluster_results;
-            for(const auto& one_cluster : nodes) {
-                fore_cluster_results.emplace_back(one_cluster.mu, one_cluster.e);
-            }
-
-            // 定义
-            return;
 
 
             // 迭代求解 F, B, 和 alpha

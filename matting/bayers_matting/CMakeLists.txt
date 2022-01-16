@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.12)
 project(bayers_matting)
 
 # 添加编译选项
-SET(CMAKE_CXX_FLAGS "-std=c++14 -O1")
+SET(CMAKE_CXX_FLAGS "-std=c++14")
 
 set(PROJECT_SOURCE_DIR ./)
 

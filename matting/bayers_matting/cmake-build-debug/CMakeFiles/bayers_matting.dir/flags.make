@@ -6,5 +6,5 @@ CXX_DEFINES =
 
 CXX_INCLUDES = @CMakeFiles/bayers_matting.dir/includes_CXX.rsp
 
-CXX_FLAGS = -std=c++14 -O1 -g
+CXX_FLAGS = -std=c++14 -g
 
