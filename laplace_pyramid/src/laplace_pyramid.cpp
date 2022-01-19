@@ -454,9 +454,9 @@ void laplace_decomposition_demo() {
 void laplace_image_blending_demo() {
     // 读取 lhs, rhs 图像, 以及 mask 图像
 
-    std::string save_dir("./images/output/blending/1/");
+    std::string save_dir("./images/output/blending/3/");
     cv::Mat left_image, right_image, mask;
-    if(true) {
+    if(false) {
         const std::string input_dir("./images/input/blending/1/");
         left_image = cv::imread(input_dir + "lhs_2.png");
         right_image = cv::imread(input_dir + "rhs_2.png");
@@ -464,15 +464,15 @@ void laplace_image_blending_demo() {
         cv::resize(right_image, right_image, cv::Size(1024, 1024));
         mask = cv::imread(input_dir + "mask_2.png", cv::IMREAD_GRAYSCALE);
     } else {
-        const std::string input_dir("./images/input/blending/2/");
-        right_image = cv::imread(input_dir + "background.png");
-        cv::resize(right_image, right_image, cv::Size(1024, 1024));
+        const std::string input_dir("./images/input/blending/3/");
+        right_image = cv::imread(input_dir + "background_2.png");
+        cv::resize(right_image, right_image, cv::Size(874, 581));
         // 根据 mask 和 起始位置生成同分辨率的 left 和 mask
-        cv::Mat foreground = cv::imread(input_dir + "foreground.png");
+        cv::Mat foreground = cv::imread(input_dir + "foreground.bmp");
         cv::Mat mask_old = cv::imread(input_dir + "mask.png", cv::IMREAD_GRAYSCALE);
         left_image = cv::Mat::zeros(right_image.rows, right_image.cols, right_image.type());
         mask = cv::Mat::zeros(right_image.rows, right_image.cols, CV_8UC1);
-        std::pair<int, int> pos({120, 150});
+        std::pair<int, int> pos({100, 20});
         for(int i = 0;i < mask_old.rows; ++i) {
             std::memcpy(mask.data + (pos.first + i) * mask.cols + pos.second, mask_old.data + i * mask_old.cols, sizeof(uchar) * mask_old.cols);
         }
@@ -495,7 +495,7 @@ void laplace_image_blending_demo() {
     // 是否要多频带融合 ?
     if(true) {
         // 设定金字塔的层数
-        int layers_num = 6;
+        int layers_num = 7;
         assert(layers_num >= 1);
         assert((1 << layers_num) < left_image.rows and "金字塔层数太大了, 超出了图像的高");
         assert((1 << layers_num) < left_image.cols and "金字塔层数太大了, 超出了图像的宽");

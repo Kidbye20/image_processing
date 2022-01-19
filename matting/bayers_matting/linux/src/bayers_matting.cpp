@@ -11,6 +11,7 @@
 //OpenCV
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
 // self
 
 
@@ -177,40 +178,43 @@ namespace {
     };
 
     std::vector< std::pair<Eigen::Vector3f, Eigen::Matrix3f> > make_clusters(
-        const uchar* const img_ptr, std::vector<int>& pixels, std::vector<float>& W) {
+        const uchar* const img_ptr, std::vector<int>& pixels, std::vector<float>& W, const bool single=false) {
         // 先收集一个 cluster
         std::list<cluster> nodes({cluster(img_ptr, pixels, W)});
         // 准备分成俩个簇
         std::vector<int> lhs, rhs;
         std::vector<float> lhs_w, rhs_w;
-        while(true) {
-            // 找到当前特征值最大的簇
-            const auto max_index = std::max_element(nodes.begin(), nodes.end());
-            // 判断是否要分裂
-            if(max_index->max_eigen_value > 0.05) {
-                // 做分裂, 所有像素都遍历一遍
-                const int pixel_num = max_index->pixel_num;
-                for(int i = 0;i < pixel_num; ++i) {
-                    const int pos = 3 * max_index->pixels[i]; // 这个像素的起始位置, 0, 1, 2 分别是 B, G, R
-                    float temp = 0;
-                    temp += norm(max_index->eigen_vec(0) * max_index->img_ptr[pos]);
-                    temp += norm(max_index->eigen_vec(1) * max_index->img_ptr[pos + 1]);
-                    temp += norm(max_index->eigen_vec(2) * max_index->img_ptr[pos + 2]);
-                    if(temp <= max_index->threshold) {
-                        lhs.emplace_back(max_index->pixels[i]);
-                        lhs_w.emplace_back(max_index->W[i]);
-                    } else {
-                        rhs.emplace_back(max_index->pixels[i]);
-                        rhs_w.emplace_back(max_index->W[i]);
+        // 如果考虑多个前景背景分布
+        if(not single) {
+            while(true) {
+                // 找到当前特征值最大的簇
+                const auto max_index = std::max_element(nodes.begin(), nodes.end());
+                // 判断是否要分裂
+                if(max_index->max_eigen_value > 0.05) {
+                    // 做分裂, 所有像素都遍历一遍
+                    const int pixel_num = max_index->pixel_num;
+                    for(int i = 0;i < pixel_num; ++i) {
+                        const int pos = 3 * max_index->pixels[i]; // 这个像素的起始位置, 0, 1, 2 分别是 B, G, R
+                        float temp = 0;
+                        temp += norm(max_index->eigen_vec(0) * max_index->img_ptr[pos]);
+                        temp += norm(max_index->eigen_vec(1) * max_index->img_ptr[pos + 1]);
+                        temp += norm(max_index->eigen_vec(2) * max_index->img_ptr[pos + 2]);
+                        if(temp <= max_index->threshold) {
+                            lhs.emplace_back(max_index->pixels[i]);
+                            lhs_w.emplace_back(max_index->W[i]);
+                        } else {
+                            rhs.emplace_back(max_index->pixels[i]);
+                            rhs_w.emplace_back(max_index->W[i]);
+                        }
                     }
+                    // 只要不是空的
+                    if(lhs.empty() or rhs.empty()) break;
+                    if(not lhs.empty()) nodes.emplace_back(cluster(max_index->img_ptr, lhs, lhs_w));
+                    if(not rhs.empty()) nodes.emplace_back(cluster(max_index->img_ptr, rhs, rhs_w));
+                    nodes.erase(max_index); // 删除这个被分裂的簇
                 }
-                // 只要不是空的
-                if(lhs.empty() or rhs.empty()) break;
-                if(not lhs.empty()) nodes.emplace_back(cluster(max_index->img_ptr, lhs, lhs_w));
-                if(not rhs.empty()) nodes.emplace_back(cluster(max_index->img_ptr, rhs, rhs_w));
-                nodes.erase(max_index); // 删除这个被分裂的簇
+                else break; // 最分散的簇达不到分裂的标准, 退出分裂
             }
-            else break; // 最分散的簇达不到分裂的标准, 退出分裂
         }
         std::vector< std::pair<Eigen::Vector3f, Eigen::Matrix3f> > results;
         for(const auto& one : nodes)
@@ -223,6 +227,7 @@ namespace {
 cv::Mat bayers_matting(
         const cv::Mat& _observation,
         const cv::Mat& _trimap,
+        const bool single=false,
         const int radius=12,
         const float sigma=8.0,
         const int min_cluster_num=8,
@@ -330,9 +335,9 @@ cv::Mat bayers_matting(
                 continue;
             // std::cout << pos / W << ", " << pos % W << " ==> " << foreground_weights.size() << ", " << background_weights.size() << std::endl;
             // 对前景点聚类
-            const auto fore_clusters = make_clusters(foreground.data, foreground_pixels, foreground_weights);
+            const auto fore_clusters = make_clusters(foreground.data, foreground_pixels, foreground_weights, single);
             // 对背景点聚类
-            const auto back_clusters = make_clusters(background.data, background_pixels, background_weights);
+            const auto back_clusters = make_clusters(background.data, background_pixels, background_weights, single);
             // 当前像素值准备好, 做成向量
             Eigen::Vector3f C;
             C << norm(observation.data[3 * pos]), norm(observation.data[3 * pos + 1]), norm(observation.data[3 * pos + 2]);
@@ -352,10 +357,10 @@ cv::Mat bayers_matting(
                 const auto fore_cov_inv = fore_clusters[i].second.inverse();
                 for(int j = 0;j < back_cluster_num; ++j) {
                     auto& back_mean = back_clusters[j].first;
-                    const auto back_cov_inv = back_clusters[i].second.inverse();
-                    float cur_alpha = init_alpha;
+                    const auto back_cov_inv = back_clusters[i].second.inverse(); // 这里重复计算了, 但是矩阵很小, 可以忽略
+                    float cur_alpha = init_alpha; // 每次前景的一个簇和背景的一个簇计算似然, 都给同一个初始化的 alpha
                     int iterations = 1;
-                    float last_likelihood = -1e30; // 记录上一次迭代的似然是多少, 判断有没有收敛, 收敛提前退出
+                    float last_likelihood = -FLT_MAX; // 记录上一次迭代的似然是多少, 判断有没有收敛, 收敛提前退出
                     while(true) {
                         // 准备 A 矩阵
                         const auto A11 = fore_cov_inv + I * square(cur_alpha) * sigma_c_inv;
@@ -371,16 +376,17 @@ cv::Mat bayers_matting(
                         Eigen::MatrixXf b;
                         b.resize(6, 1);
                         b << b1,
-                             b2; // 换行不能改
+                             b2; // 换行不能去掉
                         // 解方程组 Ax = b
-                        // auto X = A.ldlt().solve(b);  // Eigen3 在这方面很差劲
-                        Eigen::VectorXf X = A.inverse() * b;
+                        Eigen::VectorXf X = A.inverse() * b; // auto X = A.ldlt().solve(b);  // Eigen3 在这方面很差劲
                         // 更新 F, B, 截断在 0-1 以内
                         Eigen::Vector3f F, B;
                         F << clip(X(0)), clip(X(1)), clip(X(2));
                         B << clip(X(3)), clip(X(4)), clip(X(5));
                         // 更新 alpha
                         cur_alpha = ((C - B).transpose() * (F - B) / (F - B).squaredNorm()).value();
+                        // cur_alpha = ((C(0) - B(0)) * (F(0) - B(0)) + (C(1) - B(1)) * (F(1) - B(1)) + (C(2) - B(2)) * (F(2) - B(2))) / 
+                        //             (square(F(0) - B(0)) + square(F(1) - B(1)) + square(F(2) - B(2)));
                         // 计算似然函数
                         const float LC = - (C - cur_alpha * F - (1 - cur_alpha) * B).squaredNorm() * sigma_c_inv;
                         const auto LF = -(F - fore_mean).transpose() * fore_cov_inv * (F - fore_mean) / 2;
@@ -414,6 +420,7 @@ cv::Mat bayers_matting(
         }
     }
     alpha = alpha * 255;
+    // for(int i = 0;i < length; ++i) if(alpha_ptr[i] < 60) alpha_ptr[i] = 0;
     alpha.convertTo(alpha, CV_8UC1);
     return alpha(cv::Rect(radius, radius, _observation.cols, _observation.rows)).clone();
 }
@@ -423,34 +430,50 @@ int main() {
     std::cout << "opencv  :  " << CV_VERSION << std::endl;
 
     // 读取图像
-    cv::Mat observation = cv::imread("./images/input/input_10.png");
-    cv::Mat trimap = cv::imread("./images/input/mask_10.png", cv::IMREAD_GRAYSCALE);
+    cv::Mat observation = cv::imread("./images/input/input_4.bmp");
+    cv::Mat trimap = cv::imread("./images/input/mask_4.bmp", cv::IMREAD_GRAYSCALE);
     assert(not observation.empty() and not trimap.empty() and "读取的图像为空 !");
 
     cv::Mat alpha;
     run([&](){
-        alpha = bayers_matting(observation, trimap, 15);
+        alpha = bayers_matting(observation, trimap, 12);
     }, "bayers_matting  ");
 
-    cv_write(alpha, "./images/output/alpha_10.png");
+    cv_write(alpha, "./images/output/alpha_4_cliped.png");
 
-    if(false) {
+    /*
+    if(true) {
+        cv::Mat background = cv::Mat::zeros(alpha.rows, alpha.cols, observation.type());
+        std::vector<cv::Mat> alpla_stack({alpha, alpha, alpha});
+        cv::merge(alpla_stack, alpha);
+        alpha.convertTo(alpha, CV_32FC1);
+        alpha /= 255;
+        observation.convertTo(observation, CV_32FC1);
+        background.convertTo(background, CV_32FC1);
+        background = alpha.mul(observation) + (1 - alpha).mul(background);
+        background.convertTo(background, CV_8UC3);
+        cv_write(background, "./images/output/foreground.png");
+    }
+    */
+
+    if(true) {
         // 和其他图像组合在一起
-        cv::Mat background = cv::imread("./images/input/a0554-DSC_0003.png");
+        cv::Mat background = cv::imread("./images/input/a0161-_DSC0022.png");
         assert(not background.empty() and "背景图像不能为空 !");
         assert(background.channels() == 3 and "目前只支持 BGR 图像");
         alpha.convertTo(alpha, CV_32FC1);
         alpha /= 255;
         // 选一个插入的位置
-        // const std::vector<int> pos({203, 20});
-        const std::vector<int> pos({544, 20});
+        const std::vector<int> pos({103, 20});
+        // const std::vector<int> pos({544, 20});
         // 超出的部分舍弃
+        cv::resize(background, background, cv::Size(background.cols - 150, background.rows - 100));
         const int H = observation.rows;
         const int W = observation.cols;
         const int W2 = background.cols;
         const int H3 = H - std::min(0, background.rows - pos[0] - alpha.rows);
         const int W3 = W - std::min(0, background.cols - pos[1] - alpha.cols);
-        // // 逐像素融合
+        // 逐像素融合
         for(int i = 0; i < H; ++i) {
             const uchar* const src_ptr = observation.data + i * W * 3;
             const float* const alpha_ptr = alpha.ptr<float>() + i * W;
@@ -458,12 +481,13 @@ int main() {
             for(int j = 0; j < W; ++j) {
                 const int pos = 3 * j;
                 const float this_alpha = alpha_ptr[j];
+                // if(this_alpha < 0.5) continue;
                 for(int ch = 0; ch < 3; ++ch)
                     res_ptr[pos + ch] = cv::saturate_cast<uchar>(
                         this_alpha * src_ptr[pos + ch] + (1 - this_alpha) * res_ptr[pos + ch]);
             }
         }
-        cv_write(background, "./images/output/alpha_4_composed_2.png");
+        cv_write(background, "./images/output/alpha_4_composed_3.png");
     }
 
     return 0;
