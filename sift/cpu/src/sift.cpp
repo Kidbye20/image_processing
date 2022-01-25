@@ -3,6 +3,9 @@
 #include <chrono>
 #include <vector>
 #include <iostream>
+// Eigen3
+#include <Eigen/Core>
+#include <Eigen/Dense>
 // opencv
 #include <opencv2/dnn.hpp>
 #include <opencv2/opencv.hpp>
@@ -52,15 +55,6 @@ namespace {
 }
 
 
-
-struct keypoint_type {
-    cv::Point pos;
-    int size;
-    float response;
-    keypoint_type(const int x, const int y, const int _size, const float _response)
-        : pos(x, y), size(_size), response(_response) {}
-};
-
 std::vector< std::vector<cv::Mat> > build_DOG_pyramid(const cv::Mat& source, const int S=3, const float sigma=1.6, const int min_size=4) {
     // 首先上采样得到第一张图
     cv::Mat first_image;
@@ -94,11 +88,10 @@ std::vector< std::vector<cv::Mat> > build_DOG_pyramid(const cv::Mat& source, con
         this_octave.emplace_back(cur_scale.clone()); // 起始图像都已经做了高斯模糊了, first_image 和上一组的倒数第三张
         for(int j = 1; j < images_num; ++j) {
             cv::GaussianBlur(cur_scale, cur_scale, {0, 0}, sigmas_list[j], sigmas_list[j]);
-            this_octave.emplace_back(cur_scale.clone());
+            this_octave.emplace_back(cur_scale.clone()); // 这里不用 clone() 很坑爹啊
         }
         gaussi_scaled_pyramid.emplace_back(this_octave);
     }
-
     // 得到高斯差分金字塔
     std::vector< std::vector<cv::Mat> > DOG_pyramid;
     for(int i = 0;i < octaves_num; ++i) {
@@ -107,20 +100,49 @@ std::vector< std::vector<cv::Mat> > build_DOG_pyramid(const cv::Mat& source, con
         for(int j = 1;j < images_num; ++j)
             this_octave.emplace_back(gaussi_scaled_pyramid[i][j] - gaussi_scaled_pyramid[i][j - 1]);
         DOG_pyramid.emplace_back(this_octave);
-//        std::cout << this_octave[0].row(0) << std::endl;
-//        cv::Mat temp;
-//        this_octave[0].convertTo(temp, CV_8UC1);
-//        cv_show(temp);
     }
     return DOG_pyramid;
 }
+
+
+inline bool is_local_extremum(const float center, const float* const down, const float* const mid, const float* const up, const int j, const int W) {
+    return (center > 0 and center > mid[j - 1] and center > mid[j + 1] and
+           center > mid[j - 1 - W] and center > mid[j - W] and center > mid[j + 1 - W] and
+           center > mid[j - 1 + W] and center > mid[j + W] and center > mid[j + 1 + W] and
+           center > down[j - 1] and center > down[j] and center > down[j + 1] and
+           center > down[j - 1 - W] and center > down[j - W] and center > down[j + 1 - W] and
+           center > down[j - 1 + W] and center > down[j + W] and center > down[j + 1 + W] and
+           center > up[j - 1] and center > up[j] and center > up[j + 1] and
+           center > up[j - 1 - W] and center > up[j - W] and center > up[j + 1 - W] and
+           center > up[j - 1 + W] and center > up[j + W] and center > up[j + 1 + W])
+           or
+           (center < 0 and center < mid[j - 1] and center < mid[j + 1] and
+           center < mid[j - 1 - W] and center < mid[j - W] and center < mid[j + 1 - W] and
+           center < mid[j - 1 + W] and center < mid[j + W] and center < mid[j + 1 + W] and
+           center < down[j - 1] and center < down[j] and center < down[j + 1] and
+           center < down[j - 1 - W] and center < down[j - W] and center < down[j + 1 - W] and
+           center < down[j - 1 + W] and center < down[j + W] and center < down[j + 1 + W] and
+           center < up[j - 1] and center < up[j] and center < up[j + 1] and
+           center < up[j - 1 - W] and center < up[j - W] and center < up[j + 1 - W] and
+           center < up[j - 1 + W] and center < up[j + W] and center < up[j + 1 + W]);
+}
+
+
+struct keypoint_type {
+    cv::Point pos; // 位置坐标
+    int size;      // 关键点的尺寸
+    float response;// 插值之后的 DOG 响应值
+    keypoint_type(const int x, const int y, const int _size, const float _response)
+        : pos(x, y), size(_size), response(_response) {}
+};
 
 std::vector<keypoint_type> sift_detect_keypoints(
         const cv::Mat& _source,
         const int S=3,
         const float sigma=1.6,
         const int min_size=4,
-        const float contrast_threshold=0.04) {
+        const float contrast_threshold=0.05,
+        const float gamma=10.0) {
     // 转化成灰度图, 类型 float
     cv::Mat source;
     cv::cvtColor(_source, source, cv::COLOR_BGR2GRAY);
@@ -130,45 +152,89 @@ std::vector<keypoint_type> sift_detect_keypoints(
     const auto DOG_pyramid = build_DOG_pyramid(source, S, sigma, min_size);
     // 寻找尺度空间极值 (x, y, sigma)
     const float threshold = std::floor(0.5 * contrast_threshold / S * 255);
-    std::cout << "threshold  " << threshold << std::endl;
     std::vector<keypoint_type> keypoints;
     const int octaves_num = DOG_pyramid.size();
     const int images_num = DOG_pyramid[0].size();
-    for(int o = 0;o < octaves_num; ++o) {
-        for(int s = 1;s < images_num - 1; ++s) {
-            // 获取上中下三组图像
+    for(int o = 0;o < octaves_num; ++o) { // 每一组
+        for(int s = 1;s < images_num - 1; ++s) { // 从中间的几层上的点开始, 所以是 1 ~ images_num - 1
+            // 获取上中下三组图像的引用
             const auto& down_image = DOG_pyramid[o][s - 1];
             const auto& mid_image = DOG_pyramid[o][s];
             const auto& up_image = DOG_pyramid[o][s + 1];
             const int H = mid_image.rows, W = mid_image.cols;
             const int H_1 = H - 1, W_1 = W - 1;
-            // 判断每个点是不是局部极值, mid[i][j] 和
+            // 遍历每一个点, 判断每个点是不是局部极值
             for(int i = 1;i < H_1; ++i) {
                 const float* const down = down_image.ptr<float>() + i * W;
                 const float* const mid = mid_image.ptr<float>() + i * W;
                 const float* const up = up_image.ptr<float>() + i * W;
                 for(int j = 1;j < W_1; ++j) {
-                    const float center = std::abs(mid[j]);
-                    if(center < threshold)
+                    const float center = mid[j];
+                    if(std::abs(center) < threshold)  // 去掉一些响应值过小的关键点, 这里的响应值是 DOG 响应值
                         continue;
-                    if(center > std::abs(mid[j - 1]) and center > std::abs(mid[j + 1]) and
-                       center > std::abs(mid[j - 1 - W]) and center > std::abs(mid[j - W]) and center > std::abs(mid[j + 1 - W]) and
-                       center > std::abs(mid[j - 1 + W]) and center > std::abs(mid[j + W]) and center > std::abs(mid[j + 1 + W]) and
-                       center > std::abs(down[j - 1]) and center > std::abs(down[j]) and center > std::abs(down[j + 1]) and
-                       center > std::abs(down[j - 1 - W]) and center > std::abs(down[j - W]) and center > std::abs(down[j + 1 - W]) and
-                       center > std::abs(down[j - 1 + W]) and center > std::abs(down[j + W]) and center > std::abs(down[j + 1 + W]) and
-                       center > std::abs(up[j - 1]) and center > std::abs(up[j]) and center > std::abs(up[j + 1]) and
-                       center > std::abs(up[j - 1 - W]) and center > std::abs(up[j - W]) and center > std::abs(up[j + 1 - W]) and
-                       center > std::abs(up[j - 1 + W]) and center > std::abs(up[j + W]) and center > std::abs(up[j + 1 + W])) {
+                    if(is_local_extremum(center, down, mid, up, j, W)) { // 如果是局部极值
+                        /*
                         const float temp = std::pow(2, o - 1);
                         const int size = sigma * std::pow(2, s / S)  * temp * 2; // 1.414
                         keypoints.emplace_back(j * temp, i * temp, size, center);
+                        */
+                        // 做更精准的插值, 找到更好的坐标以及尺度
+                        constexpr int max_iters = 5;  // 最多迭代 5 次
+                        bool convergence = false; // 是否收敛
+                        float response; // 插值之后的响应值极值
+                        int i2 = i, j2 = j, s2 = s;  // 注意这里的 i2, j2, s2 是在不断更新的, 相邻三层 down, mid, up 的行指针也要重新赋值
+                        float D_xx, D_yy, D_sigma_2, D_xy, D_x_sigma, D_y_sigma;
+                        for(int t = 0;t < max_iters; ++t) {
+                            // 首先获取新的指针
+                            const float* mid2 = mid_image.ptr<float>() + i2 * W;
+                            const float* down2 = down_image.ptr<float>() + i2 * W;
+                            const float* up2 = up_image.ptr<float>() + i2 * W;
+                            // 首先对 i2, j2, s2  这个点局部求一阶导数和二阶海斯矩阵
+                            Eigen::Matrix<float, 3, 1> D_x;
+                            D_x << 0.5f * (mid2[j2 + 1] - mid2[j2 - 1]), 0.5f * (mid2[j2 + W] - mid2[j2 - W]), 0.5f * (up2[j2] - down2[j2]);
+                            Eigen::Matrix<float, 3, 3> DD_x;
+                            D_xx = mid2[j2 + 1] + mid2[j2 - 1] - 2 * mid2[j2];
+                            D_yy = mid2[j2 + W] + mid2[j2 - W] - 2 * mid2[j2];
+                            D_sigma_2 = up2[j2] + down2[j2] - 2 * mid2[j2];
+                            D_xy = (mid2[j2 + W + 1] + mid2[j2 - W - 1] - mid2[j2 + W - 1] - mid2[j2 - W + 1]) / 4.f;
+                            D_x_sigma = (up2[j2 + 1] + down2[j2 - 1] - up2[j2 - 1] - down2[j2 + 1]) / 4.f;
+                            D_y_sigma = (up2[j2 + W] + down2[j2 - W] - up2[j2 - W] - down2[j2 + W]) / 4.f;
+                            DD_x << D_xx, D_xy, D_x_sigma,
+                                    D_xy, D_yy, D_y_sigma,
+                                    D_x_sigma, D_y_sigma, D_sigma_2;
+                            // 求极值点的偏移量
+                            const Eigen::Matrix<float, 3, 1> offset = - DD_x.inverse() * D_x;
+                            // 判断是否收敛
+                            if(std::abs(offset(0)) < 0.5f and std::abs(offset(1)) < 0.5f and std::abs(offset(2)) < 0.5f) {
+                                convergence = true;
+                                response = mid2[j2] + 0.5 * D_x.transpose() * offset; // 更新这个地方的极值
+                                break;
+                            }
+                            // 根据偏移量关键点在尺度空间的位置
+                            j2 += int(offset(0));
+                            i2 += int(offset(1));
+                            s2 += int(offset(2));
+                            // 如果越界了, 退出迭代
+                            if(s2 < 1 or s2 > images_num - 2 or i2 < 1 or i2 > H_1 or j2 < 1 or j2 > W_1)
+                                break;
+                        }
+                        // 如果结果是收敛了
+                        if(convergence) {
+                            // 继续下一步, 去除边缘响应太强的点
+                            const float trace = D_xx + D_yy;
+                            const float det = D_xx * D_yy - D_xy * D_xy;
+                            if((trace * trace) / det < (gamma + 1) * (gamma + 1) / gamma and det > 0) {
+                                // 根据极值点 (j2, i2, s2) 恢复到原始分辨率的大小
+                                const float temp = std::pow(2, o - 1);
+                                const int size = sigma * std::pow(2, s2 / S)  * temp * 2; // 1.414
+                                keypoints.emplace_back(j2 * temp, i2 * temp, size, response);
+                            }
+                        }
                     }
                 }
             }
         }
     }
-    std::cout << "收集到 " << keypoints.size() << " 个点\n";
     return keypoints;
 }
 
@@ -184,7 +250,7 @@ int main() {
     // 展示与保存
     auto display = source_image.clone();
     for(const auto& point : keypoints)
-        cv::circle(display, point.pos, point.size, CV_RGB(255, 0, 0), 1);
+        cv::circle(display, point.pos, point.size, CV_RGB(0, 255, 0), 1);
     cv_show(display);
     cv_write(display, "./images/output/keypoints_1.png");
     return 0;
