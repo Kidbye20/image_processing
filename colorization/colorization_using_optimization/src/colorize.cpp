@@ -178,8 +178,8 @@ cv::Mat colorize_using_optimization(const cv::Mat& gray_image, const cv::Mat& sc
 
 int main() {
 	// 读取图像
-	const std::string gray_path("./images/input/example1.png");
-	const std::string scrawl_path("./images/marked/example1.png");
+	const std::string gray_path("./images/official/odeya_input.bmp");
+	const std::string scrawl_path("./images/official/odeya_m.bmp");
 	const cv::Mat gray_image = cv::imread(gray_path);
 	const cv::Mat scrawl_image = cv::imread(scrawl_path);
     assert(not gray_image.empty() and not scrawl_image.empty() and "读取图像失败 !");
@@ -197,7 +197,7 @@ int main() {
     std::filesystem::path save_dir("./images/output/");
     if(not std::filesystem::exists(save_dir))
         std::filesystem::create_directories(save_dir);
-    cv_write(colored,  save_dir.string() + "example1.png");
+    cv_write(colored,  save_dir.string() + "example13.png");
     cv_show(colored);
     
     return 0;
