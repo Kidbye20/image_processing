@@ -52,7 +52,13 @@ namespace {
         cv::hconcat(sequence, result);
         return result;
     }
+
+    inline float __abs(float x) {
+        if(x < 0) return -x;
+        return x;
+    }
 }
+
 
 
 /*
@@ -62,41 +68,54 @@ namespace {
  * 3. https://blog.csdn.net/shiyongraow/article/details/78296710
  * 4. 下一步我可以考虑, 不用那个差分的 sigma, 也不用第一张图, 直接用原图试试, 还有假如我不用 DOG 直接用 LOG 会怎么样
 */
-std::vector< std::vector<cv::Mat> > build_DOG_pyramid(const cv::Mat& source, const int S=3, const float sigma=1.6, const int min_size=4) {
-    // 首先上采样得到第一张图
+std::vector< std::vector<cv::Mat> > build_DOG_pyramid(
+        const cv::Mat& source, const int S=3, const float sigma=1.6, const int min_size=4, const bool use_diff=true, const int upsample=true) {
+    // 是否要上采样
     cv::Mat first_image;
-    cv::resize(source, first_image, {0, 0}, 2, 2, cv::INTER_LINEAR);
-    const float first_sigma = std::sqrt(sigma * sigma - (2 * 0.5) * (2 * 0.5));
-    cv::GaussianBlur(first_image, first_image, {0, 0}, first_sigma, first_sigma);
+    float first_sigma;
+    if(upsample) {
+        first_sigma = std::sqrt(sigma * sigma - (2 * 0.5) * (2 * 0.5)); // 1.2489995996796799
+        cv::resize(source, first_image, {0, 0}, 2, 2, cv::INTER_LINEAR);
+    }
+    else {
+        first_sigma = std::sqrt(sigma * sigma - 0.5 * 0.5);
+        first_image = source.clone();
+    }
+    cv::GaussianBlur(first_image, first_image, {0, 0}, first_sigma, first_sigma); // 滤波核半径就是 sigma 的三倍 + 1
     // 计算有几组图像, 最小分辨率是 4x4
     const int min_length = std::min(first_image.rows, first_image.cols);
-    const int octaves_num = std::floor(std::log(min_length) / std::log(2) - min_size);
+    const int octaves_num = std::floor(std::log2(min_length) - min_size) + upsample; // 如果上采样, 做对比
     // 计算任意一组图像的方差序列
     const int images_num = S + 3;
-    const float k = std::pow(2, 1.f / S);
+    const float k = std::pow(2, 1.f / S); // 尺度的累乘系数, 每次尺度 *= k, k = 1.25, k^2 = 1.58, 跟 first_sigma = 1.6 十分接近, 大致保持了 k 倍关系
     std::vector<float> sigmas_list(images_num, 0);
     sigmas_list[0] = sigma;
     for(int i = 1; i < images_num; ++i) {
-        const float temp = std::pow(k, i - 1) * sigma;
-        sigmas_list[i] = std::sqrt((k * k - 1) * temp * temp);
+        const float temp = std::pow(k, i - 1) * sigma; // 当前这张图象可以通过第一张图象以 temp 的高斯模糊生成
+        sigmas_list[i] = use_diff ? std::sqrt((k * k - 1) * temp * temp) : temp; // 是否用 diff, 使用高斯模糊的半群性质
     }
     // 共 octaves_num 组, 每组有 S + 3 张图像, 对应尺度逐一做高斯模糊
     std::vector< std::vector<cv::Mat> > gaussi_scaled_pyramid;
-    cv::Mat cur_scale;
+    cv::Mat cur_scale, temp;
     for(int i = 0;i < octaves_num; ++i) {
         std::vector<cv::Mat> this_octave;
         this_octave.reserve(images_num);
-        if(i == 0) cur_scale = first_image.clone(); // 如果是第一组图像
-        else { // 否则, 直接取上一组的倒数第三张图像作为起始图像, 下采样为原来的一半, 相当于尺度 * 2
-            const cv::Mat& refer = gaussi_scaled_pyramid[i - 1][images_num - 1 - 3];
+        if(i == 0) cur_scale = first_image.clone(); // 如果是第一组图像的第一张图象, 直接用上采样两倍的那个图像
+        else { // 否则, 直接取上一组的倒数第三张图像作为起始图像, 然后下采样为原来的一半, 相当于尺度乘以 2
+            const cv::Mat& refer = gaussi_scaled_pyramid[i - 1][(images_num - 1) - 2];
             cv::resize(refer, cur_scale, {refer.cols / 2, refer.rows / 2}, 0, 0, cv::INTER_LINEAR);
         }
-        this_octave.emplace_back(cur_scale.clone()); // 起始图像都已经做了高斯模糊了, first_image 和上一组的倒数第三张
+        this_octave.emplace_back(cur_scale.clone()); // 起始图像都已经做了高斯模糊了, first_image 和上一组的倒数第三张都做过高斯模糊
         for(int j = 1; j < images_num; ++j) {
-            cv::GaussianBlur(cur_scale, cur_scale, {0, 0}, sigmas_list[j], sigmas_list[j]);
-            this_octave.emplace_back(cur_scale.clone()); // 这里不用 clone() 很坑爹啊
+            if(use_diff) { // 如果方差用的 diff, 就用上一张图像继续高斯模糊
+                cv::GaussianBlur(cur_scale, cur_scale, {0, 0}, sigmas_list[j], sigmas_list[j]);
+                this_octave.emplace_back(cur_scale.clone()); // 这里不用 clone() 很坑爹啊
+            } else { // 否则直接从这一组的第一张图象, 直接高斯模糊
+                 cv::GaussianBlur(cur_scale, temp, {0, 0}, sigmas_list[j], sigmas_list[j]);
+                 this_octave.emplace_back(temp.clone());
+            }
         }
-        gaussi_scaled_pyramid.emplace_back(std::move(this_octave));
+        gaussi_scaled_pyramid.emplace_back(std::move(this_octave)); // 记录这一组的高斯模糊图像
     }
     // 得到高斯差分金字塔
     std::vector< std::vector<cv::Mat> > DOG_pyramid;
@@ -111,6 +130,7 @@ std::vector< std::vector<cv::Mat> > build_DOG_pyramid(const cv::Mat& source, con
 }
 
 
+// 判断坐标 j 的点, 其值为 center 是否是上下三层的 3x3x3 的局部极值
 inline bool is_local_extremum(const float center, const float* const down, const float* const mid, const float* const up, const int j, const int W) {
     return (center > 0 and center > mid[j - 1] and center > mid[j + 1] and
            center > mid[j - 1 - W] and center > mid[j - W] and center > mid[j + 1 - W] and
@@ -147,22 +167,26 @@ std::vector<keypoint_type> sift_detect_keypoints(
         const int S=3,
         const float sigma=1.6,
         const int min_size=4,
-        const float contrast_threshold=0.05,
-        const float gamma=10.0) {
+        const int upsample=1,
+        const float dog_threshhold=0.1,
+        const float gamma=5.0) {
+    assert(S > 0 and sigma > 0 and min_size > 2);
+    assert(upsample == 0 or upsample == 1);
     // 转化成灰度图, 类型 float
     cv::Mat source;
-    cv::cvtColor(_source, source, cv::COLOR_BGR2GRAY);
+    if(_source.channels() > 1)
+        cv::cvtColor(_source, source, cv::COLOR_BGR2GRAY);
     assert(source.channels() == 1);
     source.convertTo(source, CV_32FC1);
     // 首先构建差分金字塔
-    const auto DOG_pyramid = build_DOG_pyramid(source, S, sigma, min_size);
+    const auto DOG_pyramid = build_DOG_pyramid(source, S, sigma, min_size, upsample);
     // 寻找尺度空间极值 (x, y, sigma)
-    const float threshold = std::floor(0.5 * contrast_threshold / S * 255);
+    const float threshold = std::floor(0.5 * dog_threshhold / S * 255);
     std::vector<keypoint_type> keypoints;
-    const int octaves_num = DOG_pyramid.size();
-    const int images_num = DOG_pyramid[0].size();
-    for(int o = 0;o < octaves_num; ++o) { // 每一组
-        for(int s = 1;s < images_num - 1; ++s) { // 从中间的几层上的点开始, 所以是 1 ~ images_num - 1
+    const int octaves_num = DOG_pyramid.size(); // 几组
+    const int images_num = DOG_pyramid[0].size(); // 每组有几张图像
+    for(int o = 0;o < octaves_num; ++o) { // 遍历每一组
+        for(int s = 1;s < images_num - 1; ++s) { // 从中间的几层图像开始, 所以是 1 ~ images_num - 1
             // 获取上中下三组图像的引用
             const auto& down_image = DOG_pyramid[o][s - 1];
             const auto& mid_image = DOG_pyramid[o][s];
@@ -176,13 +200,14 @@ std::vector<keypoint_type> sift_detect_keypoints(
                 const float* const up = up_image.ptr<float>() + i * W;
                 for(int j = 1;j < W_1; ++j) {
                     const float center = mid[j];
-                    if(std::abs(center) < threshold)  // 去掉一些响应值过小的关键点, 这里的响应值是 DOG 响应值
+                    if(__abs(center) < threshold)  // 去掉一些响应值过小的关键点, 这里的响应值是 DOG 响应值
                         continue;
                     if(is_local_extremum(center, down, mid, up, j, W)) { // 如果是局部极值
                         /*
                         const float temp = std::pow(2, o - 1);
                         const int size = sigma * std::pow(2, s / S)  * temp * 2; // 1.414
                         keypoints.emplace_back(j * temp, i * temp, size, center);
+                        continue;
                         */
                         // 做更精准的插值, 找到更好的坐标以及尺度
                         constexpr int max_iters = 5;  // 最多迭代 5 次
@@ -211,9 +236,10 @@ std::vector<keypoint_type> sift_detect_keypoints(
                             // 求极值点的偏移量
                             const Eigen::Matrix<float, 3, 1> offset = - DD_x.inverse() * D_x;
                             // 判断是否收敛
-                            if(std::abs(offset(0)) < 0.5f and std::abs(offset(1)) < 0.5f and std::abs(offset(2)) < 0.5f) {
-                                convergence = true;
+                            if(__abs(offset(0)) < 0.5f and __abs(offset(1)) < 0.5f and __abs(offset(2)) < 0.5f) {
                                 response = mid2[j2] + 0.5 * D_x.transpose() * offset; // 更新这个地方的极值
+                                if(std::abs(response) > threshold) // 过滤太小的值
+                                    convergence = true;
                                 break;
                             }
                             // 根据偏移量关键点在尺度空间的位置
@@ -221,18 +247,24 @@ std::vector<keypoint_type> sift_detect_keypoints(
                             i2 += int(offset(1));
                             s2 += int(offset(2));
                             // 如果越界了, 退出迭代
-                            if(s2 < 1 or s2 > images_num - 2 or i2 < 1 or i2 > H_1 or j2 < 1 or j2 > W_1)
+                            if(s2 < 1 or s2 > images_num - 2 or i2 < 1 or i2 >= H_1 or j2 < 1 or j2 >= W_1)
                                 break;
                         }
                         // 如果结果是收敛了
                         if(convergence) {
+                            /*
+                            const float temp = std::pow(2, o - 1);
+                            const int size = sigma * std::pow(2, s2 / S)  * temp * 2;
+                            keypoints.emplace_back(j2 * temp, i2 * temp, size, response);
+                            continue;
+                            */
                             // 继续下一步, 去除边缘响应太强的点
                             const float trace = D_xx + D_yy;
                             const float det = D_xx * D_yy - D_xy * D_xy;
-                            if((trace * trace) / det < (gamma + 1) * (gamma + 1) / gamma and det > 0) {
+                            if(det > 0 and (trace * trace) / det < (gamma + 1) * (gamma + 1) / gamma) {
                                 // 根据极值点 (j2, i2, s2) 恢复到原始分辨率的大小
                                 const float temp = std::pow(2, o - 1);
-                                const int size = sigma * std::pow(2, s2 / S)  * temp * 2; // 1.414
+                                const int size = sigma * std::pow(2, s2 / S)  * temp * 2;
                                 keypoints.emplace_back(j2 * temp, i2 * temp, size, response);
                             }
                         }
@@ -248,7 +280,7 @@ std::vector<keypoint_type> sift_detect_keypoints(
 int main() {
     std::cout << "opencv  :  " << CV_VERSION << std::endl;
     // 根据图片路径读取图像
-    const char* source_path = "./images/input/box.png";
+    const char* source_path = "./images/input/a1476-IMG_2647.png";
     const auto source_image = cv::imread(source_path);
     assert(not source_image.empty() and "读取图像失败 !");
     // sift 检测关键点
@@ -258,6 +290,6 @@ int main() {
     for(const auto& point : keypoints)
         cv::circle(display, point.pos, point.size, CV_RGB(0, 255, 0), 1);
     cv_show(display);
-    cv_write(display, "./images/output/keypoints_4.png");
+    cv_write(display, "./images/output/keypoints_12_upsample.png");
     return 0;
 }
