@@ -39,31 +39,40 @@ namespace {
 
 
 
-float _min(const float x, const float y) {
+inline float _min(const float x, const float y) {
     return x > y ? y : x;
 }
 
-cv::Mat biliinear_interpolate(const cv::Mat& origin, const std::pair<int, int>& _size) {
+inline float _max(const float x, const float y) {
+    return x < y ? y : x;
+}
+
+
+
+cv::Mat bilinear_interpolate(const cv::Mat& origin, const std::pair<int, int>& _size) {
     // 获取信息
     const int H0 = origin.rows;
     const int W0 = origin.cols;
     const int C = origin.channels();
     const int h = _size.first;
     const int w = _size.second;
+    // 查看两个方向上是缩小还是放大
+    const bool h_enlarge = H0 > h;
+    const bool w_enlarge = W0 > w;
     // 计算 x 方向和 y 方向上的比率
-    const float x_rate = H0 * 1.f / h;
-    const float y_rate = W0 * 1.f / w;
+    const float x_rate = h_enlarge ? H0 * 1.f / h : H0 * 1.f / (h - 1);
+    const float y_rate = w_enlarge ? W0 * 1.f / w : W0 * 1.f / (w - 1);
     // 准备一个结果
     cv::Mat result(h, w, CV_8UC3);
     uchar* const res_ptr = result.data;
-    // 用来计算在结果 .data 存放的位置
+    // 用来计算在结果 .data 存放的位置=
     int cnt = 0;
     // 一共要插值 h X w 次
     for(int x = 0; x < h; ++x) {
         // 找到结果中 x, 对应原图中的 x 坐标
-        float x_pos = x_rate * (x + 0.5) - 0.5;
+        float x_pos = h_enlarge ? x_rate * (x + 0.5f) - 0.5f : x_rate * x;
         // 找到这个 x_pos 的上下界
-        const int x_down = std::floor(x_pos);
+        const int x_down = _max(std::floor(x_pos), 0);
         const int x_up = _min(x_down + 1, H0 - 1);
         // 计算 x 方向上的插值参数
         float x_left = x_up - x_pos;
@@ -74,7 +83,7 @@ cv::Mat biliinear_interpolate(const cv::Mat& origin, const std::pair<int, int>& 
         // 填充结果的第 x 行的 y 个像素
         for(int y = 0;y < w; ++y) {
             // 计算 y 对应原图中 y 的坐标, 放大或者缩小
-            float y_pos = y_rate * (y + 0.5) - 0.5;
+            float y_pos = w_enlarge ? y_rate * (y + 0.5f) - 0.5f : y_rate * y;
             // 计算 y 的上下界, 此时映射到原图中 (x_pos, y_pos) 的周围四个点都找到了
             const int y_down = std::floor(y_pos);
             const int y_up = _min(y_down + 1, W0 - 1);
@@ -104,8 +113,8 @@ int main() {
     assert(not origin_image.empty());
 
     // 做插值
-    const auto result_big = biliinear_interpolate(origin_image, {1600, 2400});
-    const auto result_small = biliinear_interpolate(origin_image, {70, 100});
+    const auto result_big = bilinear_interpolate(origin_image, {1600, 2400});
+    const auto result_small = bilinear_interpolate(origin_image, {140, 200});
 
     // 展示
     cv_show(result_big);
