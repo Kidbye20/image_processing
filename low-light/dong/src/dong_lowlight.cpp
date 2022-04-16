@@ -93,6 +93,7 @@ details_type dong_enhance(
         const cv::Mat& low_light,
         const int radius=3,
         const int A_pixels=100,
+        const float weight=0.8,
         const float border=0.5,
         const bool denoise=false) {
     details_type collections;
@@ -161,8 +162,7 @@ details_type dong_enhance(
         else return x;
     };
     for(int i = 0;i < length; ++i)
-        t_ptr[i] = discount(1.f - 0.8 * t_ptr[i]);
-
+        t_ptr[i] = discount(1.f - weight * t_ptr[i]);
 
     // 开始求解 J(x), 然后取反
     cv::Mat result(H, W, CV_8UC3);
@@ -171,9 +171,6 @@ details_type dong_enhance(
         const int p = 3 * i;
         for(int c = 0;c < 3; ++c) {
             const float J = (inv_ptr[p + c] - A[c]) * 1.f / t_ptr[i] + A[c];  // 更小
-            if(i == 10000) {
-                std::cout << t_ptr[i] << ", " << J << std::endl;
-            }
             res_ptr[p + c] = cv::saturate_cast<uchar>(J);
         }
     }
@@ -196,7 +193,7 @@ int main() {
 	cv::Mat low_light = cv::imread("../datasets/LOL/775.png");
 
     // 开始增强
-    auto collections = dong_enhance(low_light, 3, 100, 0.5, false);
+    auto collections = dong_enhance(low_light, 3, 100, 0.8, 0.5, false);
 
     // 展示
     for(const auto& item : collections) {
