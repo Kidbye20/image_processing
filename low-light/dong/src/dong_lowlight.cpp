@@ -157,11 +157,12 @@ details_type dong_enhance(
 
     // 对透射率做点小改变, 远景增强地更厉害点
     auto discount = [border](const float x) ->float {
-        if(x >= 0 and x < border) return 2 * x;
-        else return 1;
+        if(x >= 0 and x < border) return 2 * x * x;
+        else return x;
     };
     for(int i = 0;i < length; ++i)
-        t_ptr[i] = discount(1.f - t_ptr[i]);
+        t_ptr[i] = discount(1.f - 0.8 * t_ptr[i]);
+
 
     // 开始求解 J(x), 然后取反
     cv::Mat result(H, W, CV_8UC3);
@@ -169,7 +170,10 @@ details_type dong_enhance(
     for(int i = 0;i < length; ++i) {
         const int p = 3 * i;
         for(int c = 0;c < 3; ++c) {
-            const float J = (inv_ptr[p + c] - A[c]) * 1.f / t_ptr[i] + A[c];
+            const float J = (inv_ptr[p + c] - A[c]) * 1.f / t_ptr[i] + A[c];  // 更小
+            if(i == 10000) {
+                std::cout << t_ptr[i] << ", " << J << std::endl;
+            }
             res_ptr[p + c] = cv::saturate_cast<uchar>(J);
         }
     }
@@ -181,7 +185,7 @@ details_type dong_enhance(
 
     // 反转图像
     for(int i = 0;i < total_length; ++i)
-        res_ptr[i] = 255 - res_ptr[i];
+        res_ptr[i] = 255 - res_ptr[i]; // 更大
     collections.emplace_back("enhanced", result.clone());
     return collections;
 }
@@ -189,7 +193,7 @@ details_type dong_enhance(
 
 int main() {
 	// 读取图像
-	cv::Mat low_light = cv::imread("../datasets/MEF/Tower.png");
+	cv::Mat low_light = cv::imread("../datasets/LOL/775.png");
 
     // 开始增强
     auto collections = dong_enhance(low_light, 3, 100, 0.5, false);
