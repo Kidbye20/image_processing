@@ -175,7 +175,7 @@ std::list<std::pair<std::string, cv::Mat> >
     const int W = hdr_image.cols;
     const int C = hdr_image.channels();
     assert(C == 3 and "only BGR channels are supported!");
-    const float hdr_min = std::max(_min(hdr_image.ptr<float>(), H * W * C), 1e-6f);
+    const float hdr_min = std::max(_min(hdr_image.ptr<float>(), H * W * C), 1e-5f);
     const float hdr_max = _max(hdr_image.ptr<float>(), H * W * C);
 
     std::cout << "输入的高动态范围图像信息如下 : \n";
@@ -208,8 +208,8 @@ std::list<std::pair<std::string, cv::Mat> >
     const float range_sigma = 0.4;
     const float spatial_sigma = 0.02f * std::min(H, W);
     std::cout << "值域标准差 = " << range_sigma << "\n空域标准差 = " << spatial_sigma << std::endl;
-//    auto log_base = bilateral_filtering(log_intensity, range_sigma, spatial_sigma);
-    auto log_base = gaussi_filtering(log_intensity, 3.0);
+    auto log_base = bilateral_filtering(log_intensity, range_sigma, spatial_sigma);
+//    auto log_base = gaussi_filtering(log_intensity, spatial_sigma);
 //    auto log_base = guided_filter_with_gray(log_intensity, log_intensity, 3 * spatial_sigma, 3 * spatial_sigma, 0.1);
 
     // 求 log_detail, 原 log 亮度图 - 平滑过后的亮度图(base 层) = 细节层(log)
@@ -248,7 +248,7 @@ std::list<std::pair<std::string, cv::Mat> >
 
     // 计算新的动态范围
     const float new_hdr_max = _max(result_ptr, length * 3);
-    const float new_hdr_min = std::max(1e-6f, _min(result_ptr, length * 3));
+    const float new_hdr_min = std::max(1e-5f, _min(result_ptr, length * 3));
     std::cout << "压缩之后的动态范围 = " << new_hdr_max / new_hdr_min << std::endl;
 
     // 在动态范围内, 将数据标准化到 0-1 或者 0-255, 方便显示器显示
@@ -288,8 +288,6 @@ cv::Mat final_normalize(cv::Mat& result, const int L, const int C, const int _ty
 }
 
 
-
-
 cv::Mat reinchard(const cv::Mat& origin) {
     const int H = origin.rows;
     const int W = origin.cols;
@@ -302,8 +300,6 @@ cv::Mat reinchard(const cv::Mat& origin) {
         res_ptr[i] = ori_ptr[i] / (ori_ptr[i] + 1);
     return final_normalize(result, H * W, C, CV_8UC3);
 }
-
-
 
 
 cv::Mat gamma_correct(const cv::Mat& origin, const float gamma=0.4, std::unordered_set<int> channels={0, 1, 2}) {
@@ -327,19 +323,16 @@ cv::Mat gamma_correct(const cv::Mat& origin, const float gamma=0.4, std::unorder
 
 
 
-
-
-
-
-
 int main() {
 	// 读取图像
-	cv::Mat hdr_image = cv::imread("./images/input/vinesunset.hdr", cv::IMREAD_ANYDEPTH);
+	cv::Mat hdr_image = cv::imread("./images/input/vinesunset_2.hdr", cv::IMREAD_ANYDEPTH);
+
+    cv_show(hdr_image);
 
 	// 基于滤波分解 base  detail 的方法
 	if(true) {
 	    // 直接处理
-        auto collections = bilateral_local_tonemapping(hdr_image);
+        auto collections = bilateral_local_tonemapping(hdr_image, 10);
 
         // 保存
         std::string save_dir("./images/output/vinesunset_");
