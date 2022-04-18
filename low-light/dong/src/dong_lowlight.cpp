@@ -158,6 +158,7 @@ details_type dong_enhance(
 
     // 对透射率做点小改变, 远景增强地更厉害点
     auto discount = [border](const float x) ->float {
+        return x;
         if(x >= 0 and x < border) return 2 * x * x;
         else return x;
     };
@@ -170,7 +171,7 @@ details_type dong_enhance(
     for(int i = 0;i < length; ++i) {
         const int p = 3 * i;
         for(int c = 0;c < 3; ++c) {
-            const float J = (inv_ptr[p + c] - A[c]) * 1.f / t_ptr[i] + A[c];  // 更小
+            const float J = (inv_ptr[p + c] - A[c]) * 1.f / t_ptr[i] + A[c];  // 偏大
             res_ptr[p + c] = cv::saturate_cast<uchar>(J);
         }
     }
@@ -190,10 +191,16 @@ details_type dong_enhance(
 
 int main() {
 	// 读取图像
-	cv::Mat low_light = cv::imread("../datasets/LOL/775.png");
+	cv::Mat low_light = cv::imread("../datasets/LIME/10.bmp"); // "../datasets/LOL/775.png"
+
+    cv_show(low_light);
 
     // 开始增强
     auto collections = dong_enhance(low_light, 3, 100, 0.8, 0.5, false);
+
+//    cv::Mat concat;
+//    cv::hconcat(std::vector<cv::Mat>({low_light, collections.back().second}), concat);
+//    cv_show(concat);
 
     // 展示
     for(const auto& item : collections) {
