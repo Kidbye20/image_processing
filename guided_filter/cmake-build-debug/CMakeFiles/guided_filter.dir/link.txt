@@ -1,3 +1,0 @@
-D:\software\editor\CLion\bin\cmake\win\bin\cmake.exe -E rm -f CMakeFiles\guided_filter.dir/objects.a
-D:\environments\C++\MinGW_posix_sjlj\mingw64\bin\ar.exe cr CMakeFiles\guided_filter.dir/objects.a @CMakeFiles\guided_filter.dir\objects1.rsp
-D:\environments\C++\MinGW_posix_sjlj\mingw64\bin\g++.exe -std=c++14 -O1 -g -Wl,--whole-archive CMakeFiles\guided_filter.dir/objects.a -Wl,--no-whole-archive -o bin\guided_filter.exe -Wl,--out-implib,libguided_filter.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\guided_filter.dir\linklibs.rsp

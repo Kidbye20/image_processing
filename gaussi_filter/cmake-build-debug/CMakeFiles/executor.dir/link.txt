@@ -1,3 +1,0 @@
-D:\software\editor\CLion\bin\cmake\win\bin\cmake.exe -E rm -f CMakeFiles\executor.dir/objects.a
-D:\environments\C++\MinGW_posix_sjlj\mingw64\bin\ar.exe cr CMakeFiles\executor.dir/objects.a @CMakeFiles\executor.dir\objects1.rsp
-D:\environments\C++\MinGW_posix_sjlj\mingw64\bin\g++.exe -std=c++14 -O1 -g -Wl,--whole-archive CMakeFiles\executor.dir/objects.a -Wl,--no-whole-archive -o ..\bin\executor.exe -Wl,--out-implib,libexecutor.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\executor.dir\linklibs.rsp

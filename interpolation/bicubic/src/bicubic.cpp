@@ -139,7 +139,7 @@ cv::Mat bicubic_interpolate(const cv::Mat& origin, const std::pair<int, int>& _s
     const float h_add = 0.5 * ((H - 1) - (H2 - 1) * h_ratio);
     const float w_add = 0.5 * ((W - 1) - (W2 - 1) * w_ratio);
     // 做 padding, 因为是周围 16 个点做插值
-    const int pad = 2;
+    const int pad = 1;
     const auto padded_image = make_pad(origin, pad, pad);
     const uchar* const pad_ptr = padded_image.ptr<uchar>();
     // 准备一个结果
@@ -190,6 +190,7 @@ int main() {
 	const std::string image_path("./images/input/a1016-050716_115658__I2E4159.png");
 	cv::Mat origin_image = cv::imread(image_path);
     assert(not origin_image.empty());
+    cv_show(origin_image);
 
     // 先把图变小
     const auto small = bicubic_interpolate(origin_image, {50, 75});
@@ -206,6 +207,9 @@ int main() {
 
     // 展示
     cv_show(small);
+    cv_show(bilinear_big);
+    cv_show(big);
+    cv_show(cv_big);
     cv::Mat concat;
     cv::vconcat(std::vector<cv::Mat>({big, cv_big}), concat);
     cv_show(concat);
