@@ -25,10 +25,13 @@ def heatmap_show(image):
 	return cv2.applyColorMap(heat_map, cv2.COLORMAP_JET)
 
 
-def evaluate_depth_map(haze_one, thetas=[0.1893, 1.0267, -1.2966]):
+def evaluate_depth_map(haze_one, thetas=[0.121779, 0.959710, -0.780245, 0.041337]):
 	# 转成 hsv 空间
 	hsv = cv2.cvtColor(haze_one, cv2.COLOR_BGR2HSV)
-	return thetas[0] + thetas[1] * hsv[:, :, 2] + thetas[2] * hsv[:, :, 1]
+	if(len(thetas) == 3):
+		return thetas[0] + thetas[1] * hsv[:, :, 2] + thetas[2] * hsv[:, :, 1]
+	else:
+		return thetas[0] + thetas[1] * hsv[:, :, 2] + thetas[2] * hsv[:, :, 1] + numpy.random.normal(0, thetas[-1], tuple(hsv.shape[:2]))
 
 
 def evaluate_dark_region(depth, radius=7, use_ctypes=True):
@@ -60,18 +63,19 @@ def evaluate_dark_region(depth, radius=7, use_ctypes=True):
 
 def evaluate_atmospheric_light(haze, depth, radius=7, proportion=0.001, refine=True):
 	global history
-	# 是否要对深度图做修正 ?
-	if(refine):
-		# 先找到每个点局部区域的最小值, 记录下来
-		depth_region = evaluate_dark_region(depth, radius)
-		depth = cv2.ximgproc.guidedFilter(haze, depth_region, 7, 1e-2)
-		history["去除一些近景白色得到的深度图"] = heatmap_show(depth_region)
-		history["引导滤波精修得到的深度图"] = heatmap_show(depth)
+	# 先找到每个点局部区域的最小值
+	depth_block = evaluate_dark_region(depth, radius)
+	history["depth min block"] = heatmap_show(depth_block)
 
-	# 在深度图中, 找最亮的 0.1% 的点坐标
-	H, W = depth.shape[:2]
+	# 是否要对深度图做修正
+	if(refine):
+		depth = cv2.ximgproc.guidedFilter(haze, depth, 7, 1e-2)
+		history["refined depth by guidedFilter"] = heatmap_show(depth)
+
+	# 在局部取最小的深度图中, 找最亮的 0.1% 的点坐标
+	H, W = depth_block.shape[:2]
 	num = math.ceil(H * W * proportion)
-	depth_map_dark_f = depth.flatten()
+	depth_map_dark_f = depth_block.flatten()
 	brightest = numpy.argsort(depth_map_dark_f)
 	brightest = brightest[-num:]
 	brightest = (numpy.array([it / W for it in brightest], dtype=numpy.int64), \
@@ -82,35 +86,35 @@ def evaluate_atmospheric_light(haze, depth, radius=7, proportion=0.001, refine=T
 	points_num = len(brightest[0])
 	for i in range(points_num):
 		cv2.circle(display, (brightest[1][i], brightest[0][i]), 1, (0, 0, 255))
-	history["用于估计大气光 A 的像素"] = display
+	history["pixels used for evaluate A"] = display
 
 	# 对应输入的有雾图像中去找 r, g, b 三通道的最大值, 作为全局大气光的估计
 	brightest_pixels = haze[brightest]
 	A = brightest_pixels.max(axis=0)
 
-	return A[::-1]
+	return A[::-1], depth
 
 
 # 记录中间结果
 history = {}
 
 # 读取图像
-image_path = './images/input/tiananmen1.bmp'
+image_path = './images/input/tree2.png'
 haze_image = cv2.imread(image_path)
 I = haze_image.astype("float32") / 255
 
 # 求深度图
-beta = 0.8
+beta = 1.0
 depth_map = evaluate_depth_map(I, thetas=[0.1893, 1.0267, -1.2966])
-history["深度估计图 d"] = heatmap_show(depth_map)
+history["original depth"] = heatmap_show(depth_map)
 
 # 根据深度图求解传输率 t
 transmission_map = numpy.exp(-beta * depth_map)
 t = numpy.clip(transmission_map, 0.05, 1.0)
-history["传输率 t"] = heatmap_show(t)
+history["transmission map"] = heatmap_show(t)
 
 # 根据深度图求解全局大气光 A
-A = evaluate_atmospheric_light(I, depth_map, refine=True, radius=7)
+A, depth_map = evaluate_atmospheric_light(I, depth_map, refine=False, radius=7)
 print("全局大气光 A  ", A)
 
 # 已知 A, t 求解 J
@@ -120,6 +124,6 @@ J = numpy.clip(J * 255, 0, 255).astype("uint8")
 cv_show(numpy.concatenate([haze_image, J], axis=1))
 
 # 展示细节
-history["去雾结果"] = J
+history["haze removal result"] = J
 for l, r in history.items():
 	cv_show(r, l)
