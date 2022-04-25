@@ -84,8 +84,8 @@ for cur_iter in range(1, total_iters + 1):
 	theta_0_d = theta_0 - d
 	# 计算梯度
 	theta_0_grad = numpy.mean(2 * (theta_0_d + theta_1_v + theta_2_s))
-	theta_1_grad = numpy.mean(2 * v * (theta_1_v - theta_0_d + theta_2_s))
-	theta_2_grad = numpy.mean(2 * s * (theta_2_s - theta_0_d + theta_1_v))
+	theta_1_grad = numpy.mean(2 * v * (theta_1_v + theta_0_d + theta_2_s))
+	theta_2_grad = numpy.mean(2 * s * (theta_2_s + theta_0_d + theta_1_v))
 
 	# 计算损失
 	loss = numpy.square(d - theta_0 - theta_1 * v - theta_2 * s).sum()
