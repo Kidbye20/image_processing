@@ -25,7 +25,7 @@ int main() {
 //    dark_prior_validation();
 //
     // 最简单的 demo, 只看去雾效果
-//    dark_channel_prior_demo_1();
+    dark_channel_prior_demo_1();
 //
     // 最开始的探索
 //    dark_channel_prior_demo_2();
@@ -37,7 +37,7 @@ int main() {
 //    dark_channel_prior_demo_4();
 
 //    // 是否使用 t0
-    dark_channel_prior_demo_5();
+//    dark_channel_prior_demo_5();
 
     // 天安门那张图为什么我会错
 //    dark_channel_prior_demo_6();
@@ -145,7 +145,7 @@ void dark_prior_validation() {
 
 
 void dark_channel_prior_demo_1() {
-    const std::string image_path("../images/dehaze/he_2019/ny1.bmp");
+    const std::string image_path("../../images/dehaze/he_2019/girls.jpg");
     const auto haze_image = cv::imread(image_path);
     if(haze_image.empty()) {
         std::cout << "读取图像 " << image_path << " 失败 !\n";
@@ -153,7 +153,7 @@ void dark_channel_prior_demo_1() {
     }
     std::map<const std::string, cv::Mat> dehazed_result;
     run([&](){
-        dehazed_result = dark_channel_prior_dehaze(haze_image, 3, 0.001, 0.1, 0.95, true, false, false);
+        dehazed_result = dark_channel_prior_dehaze(haze_image, 3, 0.001, 0.1, 0.8, true, false, false);
     }, "t(x) = 1, without guide  ====>  ");
     // 展示
     cv_show(cv_concat(haze_image, dehazed_result["dehazed"]));

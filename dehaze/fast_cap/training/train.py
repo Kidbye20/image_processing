@@ -62,8 +62,8 @@ train_loader = DataLoader(
 	depth_dir="D:/data/datasets/RESIDE/OTS_beta/depth/npy")
 
 # 准备训练参数
-total_iters = 200000
-learning_rate = 1e-3
+total_iters = 500000
+learning_rate = 1e-4
 
 # 需要学习的参数
 theta_0 = 0.0
@@ -95,7 +95,8 @@ for cur_iter in range(1, total_iters + 1):
 	# sigma = 0.041337 ** 2
 	# temp = d - theta_0 - theta_1 * v - theta_2 * s
 	# 观察极大似然
-	likehood = -temp / (2 * sigma) - 0.5 * math.log(2 * 3.14 * sigma)
+	likehood = -numpy.square(temp).mean() / (2 * sigma) \
+		- 0.5 * math.log(2 * 3.14 * sigma)
 	mean_likehood += likehood.sum()
 	likehood_count += 1
 

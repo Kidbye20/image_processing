@@ -17,9 +17,9 @@ def heatmap_show(image):
 	heat_map = cv2.normalize(image, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
 	return cv2.applyColorMap(heat_map, cv2.COLORMAP_JET)
 
-
+# 获取所有文件 id
 all_file_ids = [it.replace(".npy", "") for it in os.listdir("D:/data/datasets/RESIDE/OTS_beta/depth/npy/")]
-
+# 选取一部分试试
 selected_file_ids = random.sample(all_file_ids, k=30)
 
 for cnt, file_id in enumerate(selected_file_ids):
@@ -35,7 +35,6 @@ for cnt, file_id in enumerate(selected_file_ids):
 		hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 		s = hsv[:, :, 1]
 		v = hsv[:, :, 2]
-		# 在一个局部统计一下
 		diff = []
 		d = []
 		H, W = hsv.shape[:2]

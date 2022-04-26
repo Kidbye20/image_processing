@@ -61,14 +61,14 @@ def evaluate_dark_region(depth, radius=7, use_ctypes=True):
 	
 
 
-def evaluate_atmospheric_light(haze, depth, radius=7, proportion=0.001, refine=True):
+def evaluate_atmospheric_light(haze, depth, radius=7, proportion=0.001, correct=True, refine=True):
 	global history
 	# 先找到每个点局部区域的最小值
-	depth_block = evaluate_dark_region(depth, radius)
+	depth_block = evaluate_dark_region(depth, radius) if(correct) else depth
 	history["depth min block"] = heatmap_show(depth_block)
 
 	# 是否要对深度图做修正
-	if(refine):
+	if(correct and refine):
 		depth = cv2.ximgproc.guidedFilter(haze, depth, 7, 1e-2)
 		history["refined depth by guidedFilter"] = heatmap_show(depth)
 
@@ -99,12 +99,12 @@ def evaluate_atmospheric_light(haze, depth, radius=7, proportion=0.001, refine=T
 history = {}
 
 # 读取图像
-image_path = './images/input/tree2.png'
+image_path = './images/input/girls.jpg'
 haze_image = cv2.imread(image_path)
 I = haze_image.astype("float32") / 255
 
 # 求深度图
-beta = 1.0
+beta = 0.75
 depth_map = evaluate_depth_map(I, thetas=[0.1893, 1.0267, -1.2966])
 history["original depth"] = heatmap_show(depth_map)
 
@@ -114,7 +114,8 @@ t = numpy.clip(transmission_map, 0.05, 1.0)
 history["transmission map"] = heatmap_show(t)
 
 # 根据深度图求解全局大气光 A
-A, depth_map = evaluate_atmospheric_light(I, depth_map, refine=False, radius=7)
+A, depth_map = evaluate_atmospheric_light(
+	I, depth_map, correct=True, refine=True, radius=7)
 print("全局大气光 A  ", A)
 
 # 已知 A, t 求解 J

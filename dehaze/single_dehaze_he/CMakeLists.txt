@@ -19,7 +19,7 @@ add_executable(guided_filter src/dehaze_demo.cpp src/dark_channel_prior.cpp src/
 
 
 # 设置  opencv
-set(OpenCV_DIR "D:/environments/C++/OpenCV/opencv-4.5.2/build_no_qt/install")
+set(OpenCV_DIR "D:/environments/C++/OpenCV/opencv-4.5.2/build_TDM-GCC/install")
 # 寻找 opencv 的库
 find_package(OpenCV REQUIRED)
 # 添加 opencv 的头文件
