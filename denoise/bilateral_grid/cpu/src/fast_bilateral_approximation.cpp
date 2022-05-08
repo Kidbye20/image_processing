@@ -24,6 +24,11 @@ namespace {
         cv::waitKey(0);
         cv::destroyAllWindows();
     }
+    cv::Mat cv_concat(const std::vector<cv::Mat>& images){
+        cv::Mat display;
+        cv::hconcat(images, display);
+        return display;
+    }
     bool cv_write(const cv::Mat& source, const std::string save_path) {
         return cv::imwrite(save_path, source, std::vector<int>({cv::IMWRITE_PNG_COMPRESSION, 0}));
     }
@@ -193,9 +198,9 @@ cv::Mat fast_bilateral_approximation(
         };
         // 两个网格的插值共用一套加权参数
         float wi_interpolated = 0.f;
-        for(int i = 0;i < 8; ++i) wi_interpolated += offsets[i] * wi_grid[offsets[i]];
+        for(int i = 0;i < 8; ++i) wi_interpolated += weights[i] * wi_grid[offsets[i]];
         float w_interpolated = 0.f;
-        for(int i = 0;i < 8; ++i) w_interpolated += offsets[i] * w_grid[offsets[i]];
+        for(int i = 0;i < 8; ++i) w_interpolated += weights[i] * w_grid[offsets[i]];
         // 插值结果相除, 归一化
         return wi_interpolated / w_interpolated;
     };
@@ -256,13 +261,13 @@ int main() {
             channel.convertTo(channel, CV_32FC1);
             channel /= 255;
             result_temp.emplace_back(fast_bilateral_approximation(
-                channel, channel, 8, 0.05, 2, false
+                channel, channel, 4, 0.05, 1, false
             ));
         }
         // 合并成多通道
         cv::Mat result;
         cv::merge(result_temp, result);
-        cv_show(result);
+        cv_show(cv_concat({color_image, result}));
     }
 
     return 0;
