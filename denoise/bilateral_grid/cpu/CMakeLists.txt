@@ -13,7 +13,12 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/include/)
 
 # 添加可执行文件
-add_executable(fast_bilateral src/fast_bilateral_approximation.cpp)
+add_executable(
+    fast_bilateral
+
+        src/bilateral_filter.cpp
+#    src/fast_bilateral_approximation.cpp
+)
 
 # 设置  opencv
 set(OpenCV_DIR "D:/environments/C++/OpenCV/opencv-4.5.2/build_TDM-GCC/install")

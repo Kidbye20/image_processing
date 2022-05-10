@@ -1,64 +1,4 @@
-// C++
-#include <assert.h>
-#include <cmath>
-#include <string>
-#include <vector>
-#include <fstream>
-#include <iostream>
-// OpenCV
-#include <opencv2/opencv.hpp>
-
-
-
-
-namespace {
-    void run(const std::function<void()>& work=[]{}, const std::string message="") {
-        auto start = std::chrono::steady_clock::now();
-        work();
-        auto finish = std::chrono::steady_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(finish - start);
-        std::cout << message << " " << duration.count() << " ms" <<  std::endl;
-    }
-    void cv_show(const cv::Mat& one_image, const char* info="") {
-        cv::imshow(info, one_image);
-        cv::waitKey(0);
-        cv::destroyAllWindows();
-    }
-    cv::Mat cv_concat(const std::vector<cv::Mat>& images){
-        cv::Mat display;
-        cv::hconcat(images, display);
-        return display;
-    }
-    bool cv_write(const cv::Mat& source, const std::string save_path) {
-        return cv::imwrite(save_path, source, std::vector<int>({cv::IMWRITE_PNG_COMPRESSION, 0}));
-    }
-
-    template<typename T>
-    T min_in_array(const T* const data_ptr, const int length) {
-        if(length < 1) return 0;
-        T min_value = data_ptr[0];
-        for(int i = 1;i < length; ++i)
-            if(data_ptr[i] < min_value)
-                min_value = data_ptr[i];
-        return min_value;
-    }
-    template<typename T>
-    T max_in_array(const T* const data_ptr, const int length) {
-        if(length < 1) return 0;
-        T max_value = data_ptr[0];
-        for(int i = 1;i < length; ++i)
-            if(data_ptr[i] > max_value)
-                max_value = data_ptr[i];
-        return max_value;
-    }
-
-    template<typename T>
-    inline T clip(T x, T down, T up) {
-        if(x < down) x = down;
-        else if(x > up) x = up;
-        return x;
-    }
-}
+#include "utils.h"
 
 
 
@@ -120,7 +60,10 @@ cv::Mat fast_bilateral_approximation(
         }
     }
     if(verbose) {
-        std::cout << "filling values to gird is completed" << std::endl;
+        int effective_count = 0;
+        for(int i = 0;i < grid_size; ++i)
+            if(w_grid[i] > 0) ++effective_count;
+        std::cout << "filling proportion of the grid is  " << effective_count * 1.f / grid_size << std::endl;
     }
 
     // ********************** 在网格上做卷积, 低通滤波 **********************
@@ -129,7 +72,7 @@ cv::Mat fast_bilateral_approximation(
     std::vector<float> w_grid_buffer(grid_size, 0);
     for(int dimension = 0;dimension < 3; ++dimension) {
         const int _offset = offset[dimension];  // 当前维度 +1, -1 在网格中的偏移量
-        for(int iter = 0;iter < 2; ++iter) {     // 实际半径为 2 倍的 1, 下面的滤波半径都是 1
+        for(int iter = 0;iter < 4; ++iter) {     // 实际半径为 2 倍的 1, 下面的滤波半径都是 1
             wi_grid.swap(wi_grid_buffer);
             w_grid.swap(w_grid_buffer);       // 这个交换很巧妙, 第一次卷积的结果存放在 buffer, 第二次从 buffer 中再卷积一次放在网格中
             // 开始三维卷积
@@ -228,11 +171,11 @@ int main() {
     std::setbuf(stdout, 0);
 
     // 读取图像
-    cv::Mat color_image = cv::imread("./images/input/demo.png");
+    cv::Mat color_image = cv::imread("./images/input/greekdome.ppm");
     assert(not color_image.empty() and "failed to load image");
 
     // 单通道
-    if(false) {
+    if(true) {
         // 转化成灰度图
         cv::Mat gray_image;
         cv::cvtColor(color_image, gray_image, cv::COLOR_BGR2GRAY);
@@ -245,7 +188,7 @@ int main() {
             result = fast_bilateral_approximation(
                 gray_image, gray_image,
                 4, 0.05,
-                2, false
+                2, true
             );
         }, "fast bilateral approximation using sampling grid");
         cv_show(result);
@@ -268,6 +211,7 @@ int main() {
         cv::Mat result;
         cv::merge(result_temp, result);
         cv_show(cv_concat({color_image, result}));
+        cv_write(result, "./images/output/result.png");
     }
 
     return 0;
