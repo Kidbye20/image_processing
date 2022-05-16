@@ -15,8 +15,8 @@ include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/include/)
 # 添加可执行文件
 add_executable(
     fast_bilateral
-
-        src/bilateral_filter.cpp
+    src/bilateral_grid.cpp
+#        src/bilateral_filter.cpp
 #    src/fast_bilateral_approximation.cpp
 )
 
