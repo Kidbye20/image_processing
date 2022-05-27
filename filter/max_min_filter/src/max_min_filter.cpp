@@ -6,7 +6,7 @@ template<typename T>
 class MonotonousQueue {
 private:
     const int capacity;   // 窗口容量
-    std::list<T> Q;       // 单调队列
+    std::list<int> Q;       // 单调队列
     T* data;              // 数据指针
     std::function<T(const T, const T)> compare;
 public:
@@ -23,16 +23,12 @@ public:
         }
         // 当前元素的坐标放到这里
         Q.emplace_back(i);
-//        std::cout << "单调队列  ";
-//        for(const auto it : Q) std::cout << it << "  ";
-//        std::cout << "\n";
         // 如果当前维护的区间长度超出了窗口
-//        std::cout << i << ", " << Q.front() << ", " << i - Q.front() << "\tcapacity = " << capacity << std::endl;
         if(i - Q.front() == capacity)
             Q.pop_front();
     }
 
-    T front() const {
+    int front() const {
         return this->Q.front();
     }
 };
@@ -160,15 +156,172 @@ void test_2d_extremum_filtering() {
 }
 
 
+
+// 最大值滤波也很简单, 直接取负, 找 min_filtering(除了个别极限值会导致溢出的)
+// 或者改一下 comp 和 EXTREMUM
+
+
+template<typename data_type>
+void fast_min_filtering(cv::Mat& src, cv::Mat& des, const int kernel_size=3, const data_type EXTREMUM=255) {
+    // 获取图像信息
+    const int H = src.rows;
+    const int W = src.cols;
+    // 获取中间参数做准备
+    const int radius = (kernel_size - 1) >> 1;  // 滤波核半径
+    auto comp = [](const data_type l, const data_type r){ return l <= r; };  // 决定是最小滤波还是最大滤波, 这个等于号很重要! 等于的数, 也要 pop 掉做更新
+    // 对数据做 padding
+    const int H2 = H + 2 * radius;   // padding 之后的图像高
+    const int W2 = W + 2 * radius;   // padding 之后的图像宽
+    std::vector<data_type> padded_data(H2 * W2, EXTREMUM);  // 存储 padding 之后的图像
+    for(int i = 0; i < H; ++i) {
+        data_type* const src_ptr = src.ptr<data_type>() + i * W;  // 原图像第 i 行的指针
+        data_type* const des_ptr = padded_data.data() + (i + radius) * W2 + radius;  // padding 后图像“有效内容”的第 i 行, 注意水平跟竖直方向上的 radius 偏移量
+        std::memcpy(des_ptr, src_ptr, sizeof(data_type) * W);  // 拷贝这一行的内容
+    }
+
+    // 下一步, 准备做最小值滤波, 先做 H 行的最小值滤波
+    std::vector<data_type> temp(H2 * W2, EXTREMUM);  // 找个临时变量, 存储水平滤波之后的结果
+    for(int i = 0; i < H; ++i) {  // H 行, 做 H 次的水平滤波
+        data_type* const row_ptr = padded_data.data() + (i + radius) * W2;  // 被滤波图像"有效内容"第 i 行的指针
+        data_type* const res_ptr = temp.data() + (i + radius) * W2 + radius;// 水平滤波结果"有效内容"第 i 行的指针
+        MonotonousQueue<data_type> Q(row_ptr, kernel_size, comp);    // 直接 clear, empty 置换, 或者 list 改成数组
+        Q.emplace(0);     // 当前方向要滤波的内容起点
+        for(int j = 1; j < W2; ++j) {
+            if(j >= kernel_size)
+                res_ptr[j - kernel_size] = row_ptr[Q.front()];  // 窗口长达 kernel_size 之后, 每移动一次, 单调队列的 front() 代表当前窗口的最小值
+            Q.emplace(j);    // 尝试把当前点放到单调队列中, 如果足够小, 则 pop 掉队列中比当前点大的值, 记录当前点坐标 j; 如果更大, 放进去, 检查窗口长度超出滤波核长度没有, 超出了就 pop 最老记录的数据
+        }
+        res_ptr[W2 - kernel_size] = row_ptr[Q.front()]; // 别忘了最后一个数据
+    }
+    std::vector<data_type>().swap(padded_data); // 清空, padded_data 用不着了, 释放对应内存
+
+    // 给结果创建为一个 H * W 的图像, 数据类型和被滤波图像 src 一致
+    des.create(H, W, src.type());
+
+    // 做 W 列的最小值滤波
+    for(int i = 0; i < W; ++i) {
+        data_type* const col_ptr = temp.data() + i + radius;  // 竖直方向上, 被滤波对象 temp “有效内容” 的第 i 列偏移地址, 在竖直方向上的下一个元素偏移 + W2
+        data_type* const res_ptr = des.ptr<data_type>() + i;         // 竖直方向上, 滤波结果放在第 i 列的起始偏移地址, 每次下一个元素偏移 + W
+        MonotonousQueue<data_type> Q(col_ptr, kernel_size * W2, comp); // 这一列内容的单调队列, 注意窗口间隔要乘以 W2(被滤波对象任意一行的元素个数)
+        Q.emplace(0);   // 这一列的滤波内容起点
+        for(int j = 1; j < H2; ++j) {
+            if(j >= kernel_size)
+                res_ptr[(j - kernel_size) * W] = col_ptr[Q.front()]; // 窗口长达 kernel_size 之后, 每移动一次, 单调队列的 front() 代表当前窗口的最小值
+            Q.emplace(j * W2); // 尝试把当前点放到单调队列中, 如果足够小, 则 pop 掉队列中比当前点大的值, 记录当前点坐标 j; 如果更大, 放进去, 检查窗口长度超出滤波核长度没有, 超出了就 pop 最老记录的数据
+        }
+        res_ptr[(H2 - kernel_size) * W] = col_ptr[Q.front()]; // 最后一个元素
+    }
+}
+
+
+
+template<typename data_type>
+void plain_min_filtering(cv::Mat& src, cv::Mat& des, const int kernel_size=3, const data_type EXTREMUM=255) {
+    // 获取图像信息
+    const int H = src.rows;
+    const int W = src.cols;
+    // 获取中间参数做准备
+    const int radius = (kernel_size - 1) >> 1;  // 滤波核半径
+    // 对数据做 padding
+    const int H2 = H + 2 * radius;   // padding 之后的图像高
+    const int W2 = W + 2 * radius;   // padding 之后的图像宽
+    std::vector<data_type> padded_data(H2 * W2, EXTREMUM);  // 存储 padding 之后的图像
+    for(int i = 0; i < H; ++i) {
+        data_type* const src_ptr = src.ptr<data_type>() + i * W;  // 原图像第 i 行的指针
+        data_type* const des_ptr = padded_data.data() + (i + radius) * W2 + radius;  // padding 后图像“有效内容”的第 i 行, 注意水平跟竖直方向上的 radius 偏移量
+        std::memcpy(des_ptr, src_ptr, sizeof(data_type) * W);  // 拷贝这一行的内容
+    }
+
+    // 给结果分配空间
+    des.create(H, W, src.type());
+
+    // 准备一个偏移量模板
+    int max_k = 0;
+    std::vector<int> offset(kernel_size * kernel_size, 0);
+    for(int i = -radius; i <= radius; ++i)
+        for(int j = -radius; j <= radius; ++j) {
+            if(i == 0 and j == 0)
+                continue;
+            offset[max_k++] = i * W2 + j;
+        }
+
+    // 直接暴力做最小值滤波
+    for(int i = 0; i < H; ++i) {
+        data_type* const res_ptr = des.ptr<data_type>() + i * W;
+        data_type* const src_ptr = padded_data.data() + (radius + i) * W2 + radius;
+        for(int j = 0; j < W; ++j) {
+            // 开始找
+            data_type min_value = src_ptr[j];
+            for(int k = 0; k < max_k; ++k) {
+                data_type neighbor = src_ptr[j + offset[k]];
+                if(min_value > neighbor)
+                    min_value = neighbor;
+            }
+            res_ptr[j] = min_value;
+        }
+    }
+}
+
+
+
+
+
+void test_dark_channel() {
+
+    // 读取图像
+    cv::Mat color_image = cv::imread("./images/input/demo.png");
+    assert(not color_image.empty() and color_image.type() == CV_8UC3);
+    const int H = color_image.rows;
+    const int W = color_image.cols;
+
+    // 求每个点在 rgb 上的最小值
+    cv::Mat rgb_min(H, W, CV_8UC1);
+    uchar* const color_ptr = color_image.ptr<uchar>();
+    uchar* const min_ptr = rgb_min.ptr<uchar>();
+    const int length = H * W;
+    for(int i = 0; i < length; ++i) {
+        const int p = 3 * i;
+        min_ptr[i] = std::min(std::min(color_ptr[p], color_ptr[p + 1]), color_ptr[p + 2]);
+    }
+
+    const int kernel_size = 45;
+    // 暴力的最小值滤波
+    cv::Mat plain_dark_channel;
+    run([&](){
+        plain_min_filtering<uchar>(rgb_min, plain_dark_channel, kernel_size);
+    }, "暴力最小值滤波");
+
+    // 快速的最小值滤波
+    cv::Mat fast_dark_channel;
+    run([&](){
+        fast_min_filtering<uchar>(rgb_min, fast_dark_channel, kernel_size);
+    }, "快速最小值滤波");
+
+    // 判断二者的内容是否一致
+    int ii = 0;
+    for(; ii < length; ++ii)
+        if(plain_dark_channel.data[ii] != fast_dark_channel.data[ii])
+            break;
+    std::cout << "内容是否一致===>  " << std::boolalpha << (ii == length) << std::endl;
+
+    // 展示
+    cv_show(cv_concat({rgb_min, plain_dark_channel, fast_dark_channel}));
+    cv_write(cv_concat({rgb_min, plain_dark_channel, fast_dark_channel}), "./images/output/comparison.png");
+}
+
+
 int main() {
     std::setbuf(stdout, 0);
 
 
-    // 测试一维的最小值滤波
-    test_1d_extremum_filtering();
+//    // 测试一维的最小值滤波
+//    test_1d_extremum_filtering();
+//
+//    // 测试一维的最小值滤波
+//    test_2d_extremum_filtering();
 
-    // 测试一维的最小值滤波
-    test_2d_extremum_filtering();
+
+    test_dark_channel();
 
     return 0;
 }

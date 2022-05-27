@@ -39,8 +39,16 @@ public:
 
 
 void test_1d_extremum_filtering() {
+    std::cout << "=============== 一维数据的最小值滤波 ===============\n";
+    using data_type = int;
+    auto display = [](data_type* const data, const int length) {
+        for(int i = 0; i < length; ++i)
+            std::cout << data[i] << "  ";
+        std::cout << std::endl;
+    };
     // 生成一个一维的数据
     std::vector<int> image_data({4, 1, 3, 0, 8, 9, -1, 2});
+    display(image_data.data(), image_data.size());
     // 设定滤波核的长度
     const int kernel_size = 3;
     // 最大值滤波 or 最小值滤波
@@ -69,96 +77,87 @@ void test_1d_extremum_filtering() {
         Q.emplace(i);
     }
     // 展示最值滤波结果
-    for(int i = 0; i < result_size; ++i)
-        std::cout << result[i] << "  ";
-    std::cout << std::endl;
+    display(result.data(), result_size);
 }
 
+// 这个二维的是中心 padding, 一维的是往右边 padding(里面可以省掉一个中间变量)
 
 
 void test_2d_extremum_filtering() {
-    // 定义一个二维的数据
+    std::cout << "\n\n\n=============== 二维数据的最小值滤波 ===============\n";
+    using data_type = int;
+    // 定义一个二维图像内容存储指针(存储是一维的)
     const int H = 4;
     const int W = 6;
-    std::vector<int> image_data(H * W);
-    // 定义随机种子
+    std::vector<data_type> image_data(H * W);
+    // 定义随机种子, 生成二维数据
     std::default_random_engine seed(212);
     std::uniform_int_distribution engine(0, 20);
     for(int i = 0, L = H * W; i < L; ++i)
         image_data[i] = engine(seed);
     // 打印
-    for(int i = 0; i < H; ++i) {
-        for(int j = 0; j < W; ++j)
-            std::cout << image_data[i * W + j] << "  ";
-        std::cout << std::endl;
-    }
+    auto display = [](data_type* const data, const int row, const int col){
+        for(int i = 0; i < row; ++i) {
+            for(int j = 0; j < col; ++j)
+                std::cout << data[i * col + j] << "\t";
+            std::cout << std::endl;
+        }
+    };
+    display(image_data.data(), H, W);
 
     // 设定滤波的参数(默认是最小值滤波)
-    const int kernel_size = 3;
-    assert(kernel_size & 1);
-    const int radius = (kernel_size - 1) >> 1;
-    const int EXTREMUM = 1 << 20;
-    auto comp = [](const int l, const int r){return l <= r;};
+    const int kernel_size = 3;    // 滤波核长度
+    assert(kernel_size > 0 and kernel_size & 1 and "kernel size must be odd");
+    const int radius = (kernel_size - 1) >> 1;  // 滤波核半径
+    const int EXTREMUM = (1 << 20);               // padding 填充值
+    auto comp = [](const int l, const int r){return l <= r;};  // 决定是最小滤波还是最大滤波, 这个等于号很重要! 等于的数, 也要 pop 掉做更新
     // 对数据做 padding
     std::cout << "对数据做 padding\n";
-    const int H2 = H + 2 * radius;
-    const int W2 = W + 2 * radius;
-    std::vector<int> padded_data(H2 * W2, EXTREMUM);
+    const int H2 = H + 2 * radius;   // padding 之后的图像高
+    const int W2 = W + 2 * radius;   // padding 之后的图像宽
+    std::vector<data_type> padded_data(H2 * W2, EXTREMUM);  // 存储 padding 之后的图像
     for(int i = 0; i < H; ++i) {
-        int* const src_ptr = image_data.data() + i * W;
-        int* const des_ptr = padded_data.data() + (i + radius) * W2 + radius;
-        for(int j = 0; j < W; ++j)
-            des_ptr[j] = src_ptr[j];
+        data_type* const src_ptr = image_data.data() + i * W;  // 原图像第 i 行的指针
+        data_type* const des_ptr = padded_data.data() + (i + radius) * W2 + radius;  // padding 后图像“有效内容”的第 i 行, 注意水平跟竖直方向上的 radius 偏移量
+        std::memcpy(des_ptr, src_ptr, sizeof(data_type) * W);  // 拷贝这一行的内容
     }
-    //
-    for(int i = 0; i < H2; ++i) {
-        for(int j = 0; j < W2; ++j)
-            std::cout << padded_data[i * W2 + j] << "  ";
-        std::cout << std::endl;
-    }
+    display(padded_data.data(), H2, W2);
 
     // 下一步, 准备做最小值滤波, 先做 H 行的最小值滤波
     std::cout << "做水平方向上的最小值滤波\n";
-    std::vector<int> temp;
-    for(int i = 0; i < H; ++i) {
-        // 对第 i 行做一次最小值滤波
-        int* const row_ptr = padded_data.data() + i * W2;
-        MonotonousQueue<int> Q(row_ptr, kernel_size, comp);  // 直接 clear, empty 置换, 或者 list 改成数组
-        Q.emplace(0);
+    std::vector<data_type> temp(H2 * W2, EXTREMUM);  // 找个临时变量, 存储水平滤波之后的结果
+    for(int i = 0; i < H; ++i) {  // H 行, 做 H 次的水平滤波
+        data_type* const row_ptr = padded_data.data() + (i + radius) * W2;  // 被滤波图像"有效内容"第 i 行的指针
+        data_type* const res_ptr = temp.data() + (i + radius) * W2 + radius;// 水平滤波结果"有效内容"第 i 行的指针
+        MonotonousQueue<data_type> Q(row_ptr, kernel_size, comp);    // 直接 clear, empty 置换, 或者 list 改成数组
+        Q.emplace(0);     // 当前方向要滤波的内容起点
         for(int j = 1; j < W2; ++j) {
             if(j >= kernel_size)
-                row_ptr[j - kernel_size + radius] = row_ptr[Q.front()];
-            Q.emplace(j);
+                res_ptr[j - kernel_size] = row_ptr[Q.front()];  // 窗口长达 kernel_size 之后, 每移动一次, 单调队列的 front() 代表当前窗口的最小值
+            Q.emplace(j);    // 尝试把当前点放到单调队列中, 如果足够小, 则 pop 掉队列中比当前点大的值, 记录当前点坐标 j; 如果更大, 放进去, 检查窗口长度超出滤波核长度没有, 超出了就 pop 最老记录的数据
         }
+        res_ptr[W2 - kernel_size] = row_ptr[Q.front()]; // 别忘了最后一个数据
     }
-    for(int i = 0; i < H2; ++i) {
-        for(int j = 0; j < W2; ++j)
-            std::cout << padded_data[i * W2 + j] << "  ";
-        std::cout << std::endl;
-    }
+    display(temp.data(), H2, W2);
+    std::vector<data_type>().swap(padded_data); // 清空, padded_data 用不着了, 释放对应内存
+
     // 做 W 列的最小值滤波
     std::cout << "做竖直方向上的最小值滤波\n";
+    std::vector<data_type> result(H * W, EXTREMUM); // 存储最小值滤波的结果
     for(int i = 0; i < W; ++i) {
-        // 取出这一列的第一个元素的偏移量
-        int* const col_ptr = padded_data.data() + i;
-        // 这里的 capacity 很坑
-        MonotonousQueue<int> Q(col_ptr, kernel_size * W2, comp);
-        Q.emplace(i);
+        data_type* const col_ptr = temp.data() + i + radius;  // 竖直方向上, 被滤波对象 temp “有效内容” 的第 i 列偏移地址, 在竖直方向上的下一个元素偏移 + W2
+        data_type* const res_ptr = result.data() + i;         // 竖直方向上, 滤波结果放在第 i 列的起始偏移地址, 每次下一个元素偏移 + W
+        MonotonousQueue<data_type> Q(col_ptr, kernel_size * W2, comp); // 这一列内容的单调队列, 注意窗口间隔要乘以 W2(被滤波对象任意一行的元素个数)
+        Q.emplace(0);   // 这一列的滤波内容起点
         for(int j = 1; j < H2; ++j) {
-            if(j >= kernel_size) {
-                col_ptr[(j - kernel_size) * W2 + i] = col_ptr[Q.front()];
-                if(i == 0) {
-//                    std::cout << j - kernel_size << ", " << (j - kernel_size) * W2 + i << "====>  " << Q.front() << ", " << col_ptr[Q.front()] << "\n";
-                }
-            }
-            Q.emplace(j * W2 + i);
+            if(j >= kernel_size)
+                res_ptr[(j - kernel_size) * W] = col_ptr[Q.front()]; // 窗口长达 kernel_size 之后, 每移动一次, 单调队列的 front() 代表当前窗口的最小值
+            Q.emplace(j * W2); // 尝试把当前点放到单调队列中, 如果足够小, 则 pop 掉队列中比当前点大的值, 记录当前点坐标 j; 如果更大, 放进去, 检查窗口长度超出滤波核长度没有, 超出了就 pop 最老记录的数据
         }
+        res_ptr[(H2 - kernel_size) * W] = col_ptr[Q.front()]; // 最后一个元素
     }
-    for(int i = 0; i < H2; ++i) {
-        for(int j = 0; j < W2; ++j)
-            std::cout << padded_data[i * W2 + j] << "  ";
-        std::cout << std::endl;
-    }
+    display(result.data(), H, W);
+
 }
 
 
@@ -166,8 +165,8 @@ int main() {
     std::setbuf(stdout, 0);
 
 
-//    // 测试一维的最小值滤波
-//    test_1d_extremum_filtering();
+    // 测试一维的最小值滤波
+    test_1d_extremum_filtering();
 
     // 测试一维的最小值滤波
     test_2d_extremum_filtering();
