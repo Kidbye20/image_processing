@@ -154,7 +154,7 @@ cv::Mat bilateral_grid_mean_filtering_faster(
     const int grid_intensity = intensity_level + 2 * intensity_padding;
     const int grid_size = grid_height * grid_width * grid_intensity;
     std::vector<float> grid(grid_size, 0);
-    std::vector<int> grid_weight(grid_size, 0);
+    std::vector<float> grid_weight(grid_size, 0);
     // 每个网格的长度
     const int grid_interval = std::ceil(255 / intensity_level);
     // 把图像信息填充到网格中
@@ -177,13 +177,15 @@ cv::Mat bilateral_grid_mean_filtering_faster(
                 offset[max_k++] = (i * grid_width + j) * grid_intensity + k;
     // 开始在网格中卷积
     std::vector<float> grid_result(grid_size, 0);
+    std::vector<float> grid_weight_result(grid_size, 0);
+
     for(int i = spatial_padding, max_i = grid_height - spatial_padding; i < max_i; ++i) {
         for(int j = spatial_padding, max_j = grid_width - spatial_padding; j < max_j; ++j) {
             // 获取这个点在网格中的位置
             for(int pos = intensity_padding, max_p = grid_intensity - intensity_padding; pos < max_p; ++pos) {
                 // 获取在网格中的偏移量
                 float* const grid_ptr = grid.data() + (i * grid_width + j) * grid_intensity + pos + intensity_padding;
-                int* const weight_ptr = grid_weight.data() + (i * grid_width + j) * grid_intensity + pos + intensity_padding;
+                float* const weight_ptr = grid_weight.data() + (i * grid_width + j) * grid_intensity + pos + intensity_padding;
                 // 开始卷积一个点
                 float weight_sum = 0.f;
                 float intensity_sum = 0.f;
@@ -195,61 +197,14 @@ cv::Mat bilateral_grid_mean_filtering_faster(
                     }
                 }
                 // 卷积结束, 得到这个格子的值
-                float value = intensity_sum / weight_sum;
 //                std::cout << value << std::endl;
                 // 根据结果来网格中求值
-                grid_result[(i * grid_width + j) * grid_intensity + pos + intensity_padding] = value;
+                grid_result[(i * grid_width + j) * grid_intensity + pos + intensity_padding] = intensity_sum / max_k;
+                grid_weight_result[(i * grid_width + j) * grid_intensity + pos + intensity_padding] = weight_sum / max_k;
             }
         }
     }
 
-    auto trilinear_interpolate = [](
-            const std::vector<float>& wi_grid,
-            const float x, const float y, const float z,
-            std::vector<int> border) ->float {
-        // 计算这个小数坐标 (x, y, z) 在网格中, 在三个方向上的上界和下界
-        const int x_down = clip<int>(std::floor(x), 0, border[0] - 1);
-        const int x_up   = clip<int>(x_down + 1, 0, border[0] - 1);
-        const int y_down = clip<int>(std::floor(y), 0, border[1] - 1);
-        const int y_up   = clip<int>(y_down + 1, 0, border[1] - 1);
-        const int z_down = clip<int>(std::floor(z), 0, border[2] - 1);
-        const int z_up   = clip<int>(z_down + 1, 0, border[2] - 1);
-        // 获取这个小数坐标在 x, y, z 方向上的权重量
-        const float x_weight = std::abs(x - x_down);
-        const float y_weight = std::abs(y - y_down);
-        const float z_weight = std::abs(z - z_down);
-        // 计算 (__x, __y, __z) 在网格中的偏移地址
-        auto index = [&](const int _x, const int _y, const int _z) ->int {
-            return (_x * border[1] + _y) * border[2] + _z;
-        };
-        // 准备立方体 8 个点坐标对应的偏移量
-        std::vector<int> offsets = {
-            index(x_down, y_down, z_down),
-            index(x_up,   y_down, z_down),
-            index(x_down, y_up,   z_down),
-            index(x_down, y_down, z_up),
-            index(x_up,   y_up,   z_down),
-            index(x_up,   y_down, z_up),
-            index(x_down, y_up,   z_up),
-            index(x_up,   y_up,   z_up)
-        };
-        // 准备立方体 8 个点坐标对应的加权值
-        std::vector<float> weights = {
-            (1.f - x_weight) * (1.f - y_weight) * (1.f - z_weight),
-            x_weight         * (1.f - y_weight) * (1.f - z_weight),
-            (1.f - x_weight) * y_weight         * (1.f - z_weight),
-            (1.f - x_weight) * (1.f - y_weight) * z_weight,
-            x_weight         * y_weight         * (1.f - z_weight),
-            x_weight         * (1.f - y_weight) * z_weight,
-            (1.f - x_weight) * y_weight         * z_weight,
-            x_weight         * y_weight         * z_weight
-        };
-        // 两个网格的插值共用一套加权参数
-        float wi_interpolated = 0.f;
-        for(int i = 0;i < 8; ++i) wi_interpolated += weights[i] * wi_grid[offsets[i]];
-        // 插值结果相除, 归一化
-        return wi_interpolated;
-    };
 
     // 准备一个结果
     int cnt = 0;
@@ -263,13 +218,20 @@ cv::Mat bilateral_grid_mean_filtering_faster(
             const float y = j + spatial_padding;
             const float z = noisy_image.data[i * W + j] * 1.f / float(grid_interval) + intensity_padding;
             // 三次线性插值, 两个分支
-            float interp_res = trilinear_interpolate(grid_result, x, y, z, {grid_height, grid_width, grid_intensity});
             // wi / w 是最终的加权结果
-            res_ptr[cnt++] = cv::saturate_cast<uchar>(interp_res);
+//            res_ptr[cnt++] = cv::saturate_cast<uchar>(interp_res);
         }
     }
     return result;
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -281,7 +243,7 @@ int main() {
 
     // 读取图像
     cv::Mat noisy_image = cv::imread("./images/input/example.png", 0);
-//    cv::resize(noisy_image, noisy_image, {50, 50});
+    cv::resize(noisy_image, noisy_image, {50, 50});
 
     // 用最暴力的网格做均值滤波
 //    auto smoothed = bilateral_grid_mean_filtering(
@@ -289,7 +251,9 @@ int main() {
 
     // 优化上面, 对亮度域做分级, 加速
     auto smoothed = bilateral_grid_mean_filtering_faster(
-            noisy_image, 1.0, 6, 64);
+            noisy_image, 1.0, 7.0);
+
+
 
     // 单纯用均值滤波
     // auto smoothed = bilateral_mean_filtering(noisy_image, 1.5, 30);
