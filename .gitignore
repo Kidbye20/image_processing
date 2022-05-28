@@ -8,3 +8,4 @@ DeepReverseToneMapping.pdf
 *.zip
 cmake-build-debug/
 .idea/
+backup.cpp

@@ -1,35 +1,53 @@
-import ctypes
-import numpy
 import cv2
- 
+import numpy
+import ctypes
+import time
+import datetime
+from numpy.ctypeslib import ndpointer
+
+
+# 计时
+class Timer:
+    def __init__(self, message=''):
+        self.message = message
+
+    def __enter__(self):
+        self.start = time.process_time()
+
+    def __exit__(self, type, value, trace):
+        print(self.message + '耗时  :  {:.6f} s'.format(time.process_time() - self.start))
+
+
+# 展示图像
+def cv_show(one_image):
+	cv2.imshow('crane', one_image)
+	cv2.waitKey(0)
+	cv2.destroyAllWindows()
+
+
 # 加载动态库
 lib = ctypes.cdll.LoadLibrary("./example.so")
-# 准备一个输入
-image = cv2.imread("greekdome.ppm")
-image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-image = image.astype("float32") / 255;
+# 准备一个彩色图像
+image = cv2.imread("../../images/input/a0806-IMG_2972.png")
+# 现在 rgb 通道上求一个最小
+image = numpy.min(image, axis=-1).astype("uint8")
 input_ptr = image.ctypes.data_as(ctypes.c_char_p)
 
-# 准备一个结果
+# 设定返回结果类型
 rows, cols = image.shape
-result = numpy.zeros((rows, cols)).astype("float32")
-res_ptr = result.ctypes.data_as(ctypes.c_char_p)
+lib.fast_min_filtering.restype = ndpointer(dtype=ctypes.c_ubyte, shape=(rows, cols))
 
-# 做插值
-lib.fast_bilateral_approximation(
-	res_ptr, 
-	input_ptr, 
-	input_ptr, 
-	rows, 
-	cols, 
-	ctypes.c_float(4.0), 
-	ctypes.c_float(0.05), 
-	ctypes.c_int(2))
+# 做最小值滤波
+with Timer("快速最小值滤波") as scope:
+	result = lib.fast_min_filtering(
+		input_ptr,
+		rows, 
+		cols, 
+		ctypes.c_int(81), 
+		ctypes.c_int(255), 
+		ctypes.c_bool(True)
+	)
 
-# 转换
-result = (result * 255).astype("uint8")
-cv2.imshow('crane', result)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
-
-print(result.shape)
+# 展示
+cv_show(result)
+cv2.imwrite("./output.png", result, [cv2.IMWRITE_PNG_COMPRESSION, 0])
