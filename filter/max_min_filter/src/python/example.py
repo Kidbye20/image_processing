@@ -35,11 +35,11 @@ input_ptr = image.ctypes.data_as(ctypes.c_char_p)
 
 # 设定返回结果类型
 rows, cols = image.shape
-lib.fast_min_filtering.restype = ndpointer(dtype=ctypes.c_ubyte, shape=(rows, cols))
-
+# lib.fast_min_filtering.restype = ndpointer(dtype=ctypes.c_ubyte, shape=(rows, cols))
+lib.fast_min_filtering_optimized.restype = ndpointer(dtype=ctypes.c_ubyte, shape=(rows, cols))
 # 做最小值滤波
 with Timer("快速最小值滤波") as scope:
-	result = lib.fast_min_filtering(
+	result = lib.fast_min_filtering_optimized(
 		input_ptr,
 		rows, 
 		cols, 
@@ -49,5 +49,26 @@ with Timer("快速最小值滤波") as scope:
 	)
 
 # 展示
-cv_show(result)
-cv2.imwrite("./output.png", result, [cv2.IMWRITE_PNG_COMPRESSION, 0])
+# cv_show(result)
+
+
+lib.dynamic_min_filtering.restype = ndpointer(dtype=ctypes.c_ubyte, shape=(rows, cols))
+with Timer("第二种快速最小值滤波") as scope:
+	result2 = lib.dynamic_min_filtering(
+		input_ptr,
+		rows, 
+		cols, 
+		ctypes.c_int(81), 
+		ctypes.c_int(255), 
+		ctypes.c_bool(True)
+	)
+# cv_show(result2)
+
+
+print(cv2.PSNR(result, result2))
+
+# cv2.imwrite("./output.png", result, [cv2.IMWRITE_PNG_COMPRESSION, 0])
+
+# 检测一下这个结果对不对
+one = cv2.imread("answer.png", 0)
+print(cv2.PSNR(one, result))
