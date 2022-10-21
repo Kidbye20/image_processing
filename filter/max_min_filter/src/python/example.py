@@ -67,7 +67,7 @@ with Timer("第二种快速最小值滤波") as scope:
 
 print(cv2.PSNR(result, result2))
 
-# cv2.imwrite("./output.png", result, [cv2.IMWRITE_PNG_COMPRESSION, 0])
+cv2.imwrite("./output.png", result, [cv2.IMWRITE_PNG_COMPRESSION, 0])
 
 # 检测一下这个结果对不对
 one = cv2.imread("answer.png", 0)

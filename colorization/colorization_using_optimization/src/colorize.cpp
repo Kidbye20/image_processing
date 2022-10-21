@@ -57,7 +57,7 @@ namespace {
 
 
 
-cv::Mat colorize_using_optimization(const cv::Mat& gray_image, const cv::Mat& scrawl_image, const int kernel_size=3, const float min_var=1.f) {
+cv::Mat colorize_using_optimization(const cv::Mat& gray_image, const cv::Mat& scrawl_image, const int kernel_size=7, const float min_var=1.f) {
     // 半径
     const int radius = (kernel_size - 1) >> 1;
 
@@ -80,10 +80,12 @@ cv::Mat colorize_using_optimization(const cv::Mat& gray_image, const cv::Mat& sc
 	// 记录哪些位置是有颜色的, 做了涂鸦
 	cv::Mat mask = cv::Mat::zeros(H, W, CV_8UC1);
 	uchar* const mask_ptr = mask.data;
-	for(int i = 0;i < length; ++i)
-	    if(scrawl_image_yuv.data[3 * i + 1] != 128 or
+	for(int i = 0;i < length; ++i) {
+        if(scrawl_image_yuv.data[3 * i + 1] != 128 or
 	       scrawl_image_yuv.data[3 * i + 2] != 128) // U, V 任一通道 128 是没有颜色
 	        mask_ptr[i] = 1; // U, V 中至少有一个通道的值不是 128, 有颜色
+	}
+
 
 	// 构造 A
 	std::vector< Eigen::Triplet<float> > A_list;
@@ -178,8 +180,8 @@ cv::Mat colorize_using_optimization(const cv::Mat& gray_image, const cv::Mat& sc
 
 int main() {
 	// 读取图像
-	const std::string gray_path("./images/official/odeya_input.bmp");
-	const std::string scrawl_path("./images/official/odeya_m.bmp");
+	const std::string gray_path("./images/input/child_Y_small.png");
+	const std::string scrawl_path("./images/marked/yuv2.png");
 	const cv::Mat gray_image = cv::imread(gray_path);
 	const cv::Mat scrawl_image = cv::imread(scrawl_path);
     assert(not gray_image.empty() and not scrawl_image.empty() and "读取图像失败 !");

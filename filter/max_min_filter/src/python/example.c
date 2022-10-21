@@ -279,9 +279,9 @@ data_type* fast_min_filtering_optimized(
             const int pos = j;
             while(front != back) {
                 int tail = Q[back];
-                if(comp(buffer[pos], buffer[tail]))  // 如果队列中都比当前元素小, 停止
-                    back = (back - 1 + capacity) % capacity;
-                else break; // 否则, 把队列中大于当前元素的 popback 掉
+                if(comp(buffer[pos], buffer[tail]))  // 如果当前元素小于等于队列中的元素
+                    back = (back - 1 + capacity) % capacity;// 把队列中大于当前元素的 popback 掉
+                else break; // 当前元素大于队列中的元素, 退出
             }
             // 当前元素的坐标放到这里
             back = (back + 1) % capacity;
@@ -416,7 +416,7 @@ data_type* dynamic_min_filtering_1D(data_type* src, int W, int kernel_size, data
 }
 
 
-
+// 矩阵的原地转置  https://blog.csdn.net/qsc0624/article/details/50357604
 void violent_transpose2D(data_type* src, data_type* temp, int H, int W) {
     for(int i = 0;i < H; ++i)
         for(int j = 0; j < W; ++j)
