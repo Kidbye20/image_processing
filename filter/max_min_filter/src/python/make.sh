@@ -1,1 +1,0 @@
-gcc -fPIC -shared -O2 example.c -o example.so
