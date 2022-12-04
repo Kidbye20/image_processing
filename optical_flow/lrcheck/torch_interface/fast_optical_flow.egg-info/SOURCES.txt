@@ -1,0 +1,8 @@
+setup.py
+cpp_extensions/fast_optical_flow.cpp
+cuda_extensions/lrcheck.cu
+cuda_extensions/warp.cu
+fast_optical_flow.egg-info/PKG-INFO
+fast_optical_flow.egg-info/SOURCES.txt
+fast_optical_flow.egg-info/dependency_links.txt
+fast_optical_flow.egg-info/top_level.txt
