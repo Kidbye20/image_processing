@@ -13,53 +13,6 @@ inline T clip(const T x, const A lhs, const B rhs) {
 }
 
 
-template<const int dimension>
-void fast_warp_using_flow_inplementation(
-		unsigned char* result, 
-		unsigned char* source,
-		float* flow,
-		int height, 
-		int width, 
-		int channel) {
-	// 遍历每一个位置
-	for (int i = 0; i < height; ++i) {
-		float* flow_ptr = flow + i * width * dimension;
-		for (int j = 0; j < width; ++j) {
-			// 获取当前坐标 和 对应的光流值
-			float x = i + flow_ptr[2 * j + 1];
-			float y = j + flow_ptr[2 * j];
-			// 截断
-			x = clip(x, 0.f, (height - 1) * 1.f);
-			y = clip(y, 0.f, (width - 1)  * 1.f);
-			// 上下界限
-			const int x_low  = std::floor(x);
-			const int x_high = std::min(x_low + 1, height - 1);
-			const int y_low  = std::floor(y);
-			const int y_high = std::min(y_low + 1, width - 1);
-			// 算加权系数
-			const float x_high_weight = x - x_low;
-			const float x_low_weight  = 1.f - x_high_weight;
-			const float y_high_weight = y - y_low;
-			const float y_low_weight  = 1.f - y_high_weight;
-			// 开始多通道加权
-			for (int c = 0; c < channel; ++c) {
-				// 找到四个原图四个点的值
-				unsigned char Q1 = source[(x_low * width + y_low) * channel + c];
-				unsigned char Q2 = source[(x_low * width + y_high) * channel + c];
-				unsigned char Q3 = source[(x_high * width + y_low) * channel + c];
-				unsigned char Q4 = source[(x_high * width + y_high) * channel + c];
-				// 左右加权
-				float up_value   = y_low_weight * Q1 + y_high_weight * Q2;
-				float down_value = y_low_weight * Q3 + y_high_weight * Q4;
-				// 上下加权
-				float value = x_low_weight * up_value + x_high_weight * down_value;
-				result[(i * width + j) * channel + c] = 
-					clip<unsigned char, unsigned char, unsigned char>(value, 0, 255);
-			}
-		}
-	}
-}
-
 
 
 void fast_compute_occulusion_inplementation(
@@ -115,16 +68,128 @@ void fast_compute_occulusion_inplementation(
 
 
 
+
+template<typename type=unsigned char, const int dimension>
+void backward_warp_using_flow_inplementation(
+		type* result, 
+		type* source,
+		float* flow,
+		int height, 
+		int width, 
+		int channel) {
+	// 遍历每一个位置
+	for (int i = 0; i < height; ++i) {
+		float* flow_ptr = flow + i * width * dimension;
+		for (int j = 0; j < width; ++j) {
+			// 获取当前坐标 和 对应的光流值
+			float x = i + flow_ptr[2 * j + 1];
+			float y = j + flow_ptr[2 * j];
+			// 截断
+			x = clip(x, 0.f, (height - 1) * 1.f);
+			y = clip(y, 0.f, (width - 1)  * 1.f);
+			// 上下界限
+			const int x_low  = std::floor(x);
+			const int x_high = std::min(x_low + 1, height - 1);
+			const int y_low  = std::floor(y);
+			const int y_high = std::min(y_low + 1, width - 1);
+			// 算加权系数
+			const float x_high_weight = x - x_low;
+			const float x_low_weight  = 1.f - x_high_weight;
+			const float y_high_weight = y - y_low;
+			const float y_low_weight  = 1.f - y_high_weight;
+			// 开始多通道加权
+			for (int c = 0; c < channel; ++c) {
+				// 找到四个原图四个点的值
+				type Q1 = source[(x_low * width + y_low) * channel + c];
+				type Q2 = source[(x_low * width + y_high) * channel + c];
+				type Q3 = source[(x_high * width + y_low) * channel + c];
+				type Q4 = source[(x_high * width + y_high) * channel + c];
+				// 左右加权
+				float up_value   = y_low_weight * Q1 + y_high_weight * Q2;
+				float down_value = y_low_weight * Q3 + y_high_weight * Q4;
+				// 上下加权
+				float value = x_low_weight * up_value + x_high_weight * down_value;
+				result[(i * width + j) * channel + c] = 
+					clip<type, type, type>(value, 0, 255);
+			}
+		}
+	}
+}
+
+
+
+template<typename T=int>
+inline T nearest_round(const float x, const float eps=0.5f) {
+	return T(x + eps);
+}
+
+
+template<typename T=float>
+inline T compute_flow_intensity(const float u, const float v) {
+	return std::abs(u) + std::abs(v);
+}
+
+
+void forward_warp_using_flow_inplementation(
+		unsigned char* result, 
+		unsigned char* source,
+		float* flow,
+		int height,
+		int width,
+		int channel) {
+	std::vector<float> flow_intensity(height * width, 0.f);
+	// 遍历每一个点
+	for (int i = 0; i < height; ++i) {
+		float* flow_ptr = flow + i * width * 2;
+		for (int j = 0; j < width; ++j) {
+			// 获取当前坐标 和 对应的光流值
+			float u = flow_ptr[2 * j + 1];
+			float v = flow_ptr[2 * j];
+			// 获取偏移的位置
+			float x = clip(i + u, 0.f, (height - 1) * 1.f);
+			float y = clip(j + v, 0.f, (width - 1) * 1.f);
+			// 找到 (i + u, j + v 最近的那个点)
+			int __x = nearest_round(x);
+			int __y = nearest_round(y);
+			// 先检查 (__x, __y) 位置, 是不是被赋值过, 如果本次的光流强度更大, 默认是前景, 保留前景
+			int target_pos = __x * width + __y;
+			float intensity = compute_flow_intensity(u, v);
+			if (intensity < flow_intensity[target_pos])
+				continue;
+			// 本次光流更大, 覆盖之前的结果
+			flow_intensity[target_pos] = intensity;
+			// 给结果的这个地方 result(__x, __y) 赋值为 source(i, j), 三个通道
+			unsigned char* source_start = source + (i * width + j) * channel;
+			unsigned char* result_start = result + (__x * width + __y) * channel;
+			for (int c = 0; c < channel; ++c) {
+				result_start[c] = source_start[c];
+			}
+		}
+	}
+}
+
+
+
 // 编程命名接口
 extern "C" {
-	void fast_warp_using_flow(
+	void backward_warp_using_flow(
 		unsigned char* result, 
 		unsigned char* source,
 		float* flow,
 		int height, 
 		int width, 
 		int channel) {
-		fast_warp_using_flow_inplementation<2>(result, source, flow, height, width, channel);
+		backward_warp_using_flow_inplementation<unsigned char, 2>(result, source, flow, height, width, channel);
+	}
+
+	void forward_warp_using_flow(
+		unsigned char* result, 
+		unsigned char* source,
+		float* flow,
+		int height,
+		int width,
+		int channel) {
+		forward_warp_using_flow_inplementation(result, source, flow, height, width, channel);
 	}
 
 	void fast_compute_occulusion(
