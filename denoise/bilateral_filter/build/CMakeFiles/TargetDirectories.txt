@@ -1,3 +1,0 @@
-/home/yhl/computer_vision/bilateral_filter/build/CMakeFiles/rebuild_cache.dir
-/home/yhl/computer_vision/bilateral_filter/build/CMakeFiles/edit_cache.dir
-/home/yhl/computer_vision/bilateral_filter/build/CMakeFiles/executor.dir

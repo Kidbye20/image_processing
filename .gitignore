@@ -9,3 +9,8 @@ DeepReverseToneMapping.pdf
 cmake-build-debug/
 .idea/
 backup.cpp
+*.egg
+*.obj
+*.egg-info
+*.so
+*.mexw64
