@@ -14,5 +14,4 @@ backup.cpp
 *.egg-info
 *.so
 *.mexw64
-*.onnx
 *.pyc

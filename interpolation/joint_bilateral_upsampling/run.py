@@ -39,8 +39,8 @@ print("highres_input  :  ", highres_input.shape)
 # 获取高宽的比例
 h_small, w_small, channel_small = backward_flow_small.shape
 h_large, w_large, channel_large = highres_input.shape
-h_scale = float(h_large / h_small)
-w_scale = float(w_large / w_small)
+h_scale = float((h_large + 1) / h_small)
+w_scale = float((w_large + 1) / w_small)
 print("small  :  ", h_small, w_small, channel_small)
 print("large  :  ", h_large, w_large, channel_large)
 print("scale  :  ", h_scale, w_scale)
@@ -50,13 +50,13 @@ h_small_radius = 1
 w_small_radius = 1
 
 # 根据比例得到大分辨率的 滤波半径
-h_large_radius = math.floor(h_small_radius * h_scale)
-w_large_radius = math.floor(w_small_radius * w_scale)
+h_large_radius = math.ceil(h_small_radius * h_scale)
+w_large_radius = math.ceil(w_small_radius * w_scale)
 print("radius-small  :  ", h_small_radius, w_small_radius)
 print("radius-large  :  ", h_large_radius, w_large_radius)
 
 # 对小分辨率结果 和 高分辨率引导图做 padding
-source = numpy.pad(backward_flow_small, [(h_small_radius, h_small_radius), (w_small_radius, w_small_radius), (0, 0)], mode="reflect")
+source = numpy.pad(backward_flow_small, [(h_small_radius, h_small_radius + 1), (w_small_radius, w_small_radius), (0, 0)], mode="reflect")
 guide  = numpy.pad(highres_input,       [(h_large_radius, h_large_radius), (w_large_radius, w_large_radius), (0, 0)], mode="reflect")
 print("source  :  ", source.shape)
 print("guide   :  ", guide.shape)
