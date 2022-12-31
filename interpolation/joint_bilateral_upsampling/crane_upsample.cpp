@@ -1,18 +1,45 @@
 // C++
 #include <cmath>
 #include <vector>
+#include <cstring>
 #include <iostream>
 
 
 
 namespace {
+
+	template<typename T>
+	void make_padding(T* const des_ptr, const T* const src_ptr, const int H, const int W, const int h_pad, const int w_pad) {
+		// 获取目标图像一行的像素个数， 一列的像素个数
+		const int W2 = W + 2 * h_pad;
+		const int H2 = H + 2 * w_pad;
+		// 拷贝一行的代价
+		const int bytes_in_line = sizeof(T) * W;
+		// 首先拷贝中间的内容
+		for (int i = 0; i < H; ++i)
+			std::memcpy(des_ptr + (h_pad + i) * W2 + w_pad, src_ptr + i * W, bytes_in_line);
+		// 拷贝上面 padding 的内容, 镜像
+		for (int i = 0; i < h_pad; ++i) 
+			std::memcpy(des_ptr + (h_pad - 1 - i) * W2 + w_pad, src_ptr + i * W, bytes_in_line);
+		// 拷贝下面 padding 的内容, 镜像
+		for (int i = 0; i < h_pad; ++i) 
+			std::memcpy(des_ptr + (H + h_pad + i) * W2 + w_pad, src_ptr + (H - 1 - i) * W, bytes_in_line);
+		// 拷贝左边 padding 的内容
+		for (int i = 0; i < H2; ++i) {
+			int start = i * W2 + w_pad + w_pad - 1;
+			for (int j = 0; j < w_pad; ++j) des_ptr[i * W2 + j] = des_ptr[start - j];
+			start = i * W2 + W + w_pad;
+			for (int j = 0; j < w_pad; ++j) des_ptr[start + j] = des_ptr[start - 1 - j];
+		}
+	}
+
 	template<typename T>
 	inline T square(const T x) {
 		return x * x;
 	}
 
 	template<typename T, typename S>
-	inline T clip(const S x, const T low, const Y high) {
+	inline T clip(const S x, const T low, const T high) {
 		if (x < low) return low;
 		else if (x > high) return high;
 		else return x;
@@ -39,6 +66,10 @@ void joint_bilateral_upsampling_inplementation(
 	int w_small_radius   = int(extra_args[args_cnt++]);
 	int h_large_radius   = int(extra_args[args_cnt++]);
 	int w_large_radius   = int(extra_args[args_cnt++]);
+	int h_small_pad      = int(extra_args[args_cnt++]);
+	int w_small_pad      = int(extra_args[args_cnt++]);
+	int h_large_pad      = int(extra_args[args_cnt++]);
+	int w_large_pad      = int(extra_args[args_cnt++]);
 	float h_scale        = extra_args[args_cnt++];
 	float w_scale        = extra_args[args_cnt++];
 	float spatial_sigma  = extra_args[args_cnt++];
@@ -47,17 +78,18 @@ void joint_bilateral_upsampling_inplementation(
 	bool use_spatial_lut = extra_args[args_cnt++] > 0;
 	bool use_range_lut   = extra_args[args_cnt++] > 0;
 	// 生成一些辅助变量
-	int w_small_padded = w_small + 2 * w_small_radius;
-	int w_large_padded = w_large + 2 * w_large_radius;
+	int w_small_padded   = w_small + 2 * w_small_pad;
+	int w_large_padded   = w_large + 2 * w_large_pad;
 
-	printf("[%d %d %d] [%d %d %d] [%d %d %d %d] [%f %f] [%f %f] [%d %d %d] [%d %d]\n",
-		h_small, w_small, channel_small,
-		h_large, w_large, channel_large,
-		h_small_radius, w_small_radius, h_large_radius, w_large_radius,
-		h_scale, w_scale,
-		spatial_sigma, range_sigma,
-		use_bilinear, use_spatial_lut, use_range_lut,
-		w_small_padded, w_large_padded);
+	// printf("[%d %d %d] [%d %d %d] [%d %d %d %d] [%d %d %d %d] [%f %f] [%f %f] [%d %d %d] [%d %d]\n",
+	// 	h_small, w_small, channel_small,
+	// 	h_large, w_large, channel_large,
+	// 	h_small_radius, w_small_radius, h_large_radius, w_large_radius,
+	// 	h_small_pad, w_small_pad, h_large_pad, w_large_pad,
+	// 	h_scale, w_scale,
+	// 	spatial_sigma, range_sigma,
+	// 	use_bilinear, use_spatial_lut, use_range_lut,
+	// 	w_small_padded, w_large_padded);
 
 	
 	// 提前计算一个空间权重表
@@ -73,7 +105,6 @@ void joint_bilateral_upsampling_inplementation(
 			}
 		}
 	}
-	std::cout << "spatial lut is OK\n";
 
 	// 提前计算一个值域权重表, 只有 guide 是 int 族时才能这么干
 	constexpr int range_size{3 * 256 * 256};
@@ -87,17 +118,16 @@ void joint_bilateral_upsampling_inplementation(
 			range_table[i] = std::exp(-i * sigma_inv);
 		}
 	}
-	std::cout << "range lut is OK\n";
 		
 	// 生成高分辨率结果的每一个点的值
 	for (int i = 0; i < h_large; ++i) {
 		// 当前行的引导指针
-		guide_type* guide_ptr = guide + channel_large * ((h_large_radius + i) * w_large_padded + w_large_radius);
+		guide_type* guide_ptr = guide  + channel_large * ((h_large_pad + i) * w_large_padded + w_large_pad);
 		// 当前行的结果指针
-		src_type* res_ptr = result + channel_small * i * w_large;
+		src_type* res_ptr     = result + channel_small * i * w_large;
 		// 当前行映射到小分辨率所在行
-		int   i_small   = int(i / h_scale);
-		src_type* src_ptr = source + channel_small * ((h_small_radius + i_small) * w_small_padded + w_small_radius);
+		int   i_small         = int(i / h_scale);
+		src_type* src_ptr     = source + channel_small * ((h_small_pad + i_small) * w_small_padded + w_small_pad);
 		// 遍历当前行的所有位置
 		for (int j = 0; j < w_large; ++j) {
 			// 首先找到当前位置在引导图上的值 P
@@ -124,16 +154,14 @@ void joint_bilateral_upsampling_inplementation(
 					src_type range_weight;
 					if (use_range_lut) {
 						int diff_pos = 0;
-						for (int c = 0; c < channel_large; ++c) {
+						for (int c = 0; c < channel_large; ++c)
 							diff_pos += square<int>(P[c] - Q[c]);
-						}
 						range_weight = range_table[diff_pos];
 					} else {
 						// 这里还有点 bug
 						src_type diff{0.f};
-						for (int c = 0; c < channel_large; ++c) {
+						for (int c = 0; c < channel_large; ++c)
 							diff += square<src_type>(P[c] / range_norm - Q[c] / range_norm);
-						}
 						range_weight = std::exp(-diff / (2 * square(range_sigma)));
 					}
 						
@@ -144,9 +172,8 @@ void joint_bilateral_upsampling_inplementation(
 					if (not use_bilinear) {
 						// 如果不用插值, 直接最近邻获取小分辨率的值
 						src_type* S = src_ptr + channel_small * (int(x / h_scale) * w_small_padded + int((j + y) / w_scale));
-						for (int c = 0; c < channel_small; ++c) {
+						for (int c = 0; c < channel_small; ++c)
 							temp[c] += this_weight * S[c];
-						}
 					}
 					else {
 						// 根据相对坐标 (x / h_scale, (j + y) / w_scale) 插值
@@ -155,8 +182,8 @@ void joint_bilateral_upsampling_inplementation(
 						src_type x_offset = x / h_scale;
 						src_type y_offset = (j + y) / w_scale;
 						// 获取上下界
-						int x_low  = std::floor(x_offset);
-						int y_low  = std::floor(y_offset);
+						int x_low    = std::floor(x_offset);
+						int y_low    = std::floor(y_offset);
 						// 获取四个坐标位置(用于插值的)
 						src_type* Q1 = src_ptr + channel_small * (x_low * w_small_padded + y_low);
 						src_type* Q2 = Q1 + channel_small;
@@ -208,9 +235,9 @@ namespace {
 		float y_high_weight = y_offset - y_low;
 		// 找到四个顶点
 		src_type* Q1 = source + (x_low * width + y_low) * channel;
-		src_type* Q2 = Q1 + channel;
-		src_type* Q3 = Q1 + width * channel;
-		src_type* Q4 = Q3 + channel;
+		src_type* Q2 = Q1     + channel;
+		src_type* Q3 = Q1     + width * channel;
+		src_type* Q4 = Q3     + channel;
 		// 开始加权
 		for (int c = 0; c < channel; ++c) {
 			float up   = (1.f - y_high_weight) * Q1[c] + y_high_weight * Q2[c];
@@ -243,6 +270,10 @@ void sparse_joint_bilateral_upsampling_inplementation(
 	int w_small_radius   = int(extra_args[args_cnt++]);
 	int h_large_radius   = int(extra_args[args_cnt++]);
 	int w_large_radius   = int(extra_args[args_cnt++]);
+	int h_small_pad      = int(extra_args[args_cnt++]);
+	int w_small_pad      = int(extra_args[args_cnt++]);
+	int h_large_pad      = int(extra_args[args_cnt++]);
+	int w_large_pad      = int(extra_args[args_cnt++]);
 	float h_scale        = extra_args[args_cnt++];
 	float w_scale        = extra_args[args_cnt++];
 	float spatial_sigma  = extra_args[args_cnt++];
@@ -251,22 +282,23 @@ void sparse_joint_bilateral_upsampling_inplementation(
 	bool use_spatial_lut = extra_args[args_cnt++] > 0;
 	bool use_range_lut   = extra_args[args_cnt++] > 0;
 	// 生成一些辅助变量
-	int w_small_padded = w_small + 2 * w_small_radius;
-	int w_large_padded = w_large + 2 * w_large_radius;
+	int w_small_padded   = w_small + 2 * w_small_pad;
+	int w_large_padded   = w_large + 2 * w_large_pad;
 
-	printf("[%d %d %d] [%d %d %d] [%d %d %d %d] [%f %f] [%f %f] [%d %d %d] [%d %d]\n",
-		h_small, w_small, channel_small,
-		h_large, w_large, channel_large,
-		h_small_radius, w_small_radius, h_large_radius, w_large_radius,
-		h_scale, w_scale,
-		spatial_sigma, range_sigma,
-		use_bilinear, use_spatial_lut, use_range_lut,
-		w_small_padded, w_large_padded);
+	// printf("[%d %d %d] [%d %d %d] [%d %d %d %d] [%d %d %d %d] [%f %f] [%f %f] [%d %d %d] [%d %d]\n",
+	// 	h_small, w_small, channel_small,
+	// 	h_large, w_large, channel_large,
+	// 	h_small_radius, w_small_radius, h_large_radius, w_large_radius,
+	// 	h_small_pad, w_small_pad, h_large_pad, w_large_pad,
+	// 	h_scale, w_scale,
+	// 	spatial_sigma, range_sigma,
+	// 	use_bilinear, use_spatial_lut, use_range_lut,
+	// 	w_small_padded, w_large_padded);
 
 	// 先把空间权重表算出来
 	int   spatial_size = (2 * h_small_radius + 1) * (2 * w_small_radius + 1);
 	std::vector<float> spatial_lut(spatial_size);
-	int   spatial_cnt = 0;
+	int   spatial_cnt  = 0;
 	for (int x = -h_small_radius; x <= h_small_radius; ++x) {
 		for (int y = -w_small_radius; y <= w_small_radius; ++y) {
 			spatial_lut[spatial_cnt++] = std::exp(-(square(x) + square(y)) / (2 * square(spatial_sigma)));
@@ -287,18 +319,18 @@ void sparse_joint_bilateral_upsampling_inplementation(
 	// 开始联合滤波, 生成每一个点
 	for (int i = 0; i < h_large; ++i) {
 		// 当前行对应在 guide 引导图像中的指针
-		unsigned char* guide_ptr = guide + ((h_large_radius + i) * w_large_padded + w_large_radius) * channel_large;
+		unsigned char* guide_ptr = guide  + ((h_large_pad + i) * w_large_padded + w_large_pad) * channel_large;
 		// 当前行对应结果 result 的指针
-		float* res_ptr  = result + i * w_large * channel_small;
+		float* res_ptr           = result + i * w_large * channel_small;
 		// 当前行对应小分辨率图像上的指针
-		float i_small_f = i / h_scale;
-		int   i_small   = std::floor(i_small_f);
-		float* src_ptr  = source + ((h_small_radius + i_small) * w_small_padded + w_small_radius) * channel_small;
+		float i_small_f          = i / h_scale;
+		int   i_small            = std::floor(i_small_f);
+		float* src_ptr           = source + ((h_small_pad + i_small) * w_small_padded + w_small_pad) * channel_small;
 		// 对于每一个位置
 		for (int j = 0; j < w_large; ++j) {
 			// 当前列对应小分辨率上的值
-			float j_small_f = j / w_scale;
-			float j_small   = std::floor(j_small_f);
+			float j_small_f  = j / w_scale;
+			float j_small    = std::floor(j_small_f);
 			// 找到当前点在 guide 上的值
 			unsigned char* P = guide_ptr + j * channel_large;
 			// 初始化累计值
@@ -321,18 +353,16 @@ void sparse_joint_bilateral_upsampling_inplementation(
 					if (not use_range_lut) {
 						// P 和 Q 之间计算差异
 						float diff = 0.f;
-						for (int c = 0; c < channel_large; ++c) {
+						for (int c = 0; c < channel_large; ++c)
 							diff += square<float>(P[c] / 255.f - Q[c] / 255.f);
-						}
 						// 根据 PQ 差异得到值域权重
 						range_weight = std::exp(-diff / (2 * square(range_sigma)));
 					}
 					else {
 						// 如果查表
 						int diff_pos = 0;
-						for (int c = 0; c < channel_large; ++c) {
+						for (int c = 0; c < channel_large; ++c)
 							diff_pos += square(int(P[c]) - int(Q[c]));
-						}
 						range_weight = range_lut[diff_pos];
 					}
 						
