@@ -33,15 +33,15 @@ cv_write = lambda x, y: cv2.imwrite(x, y, [cv2.IMWRITE_PNG_COMPRESSION, 0])
 
 
 opt = lambda: None
-opt.save_dir       = "./images/output"
+opt.images_dir     = "./images/sample_3"
 opt.use_flow_cache = False
-opt.flow_cache     = "./images/output/forward_flow.npy"
-opt.image1_path    = "./images/input/sample1_image1.jpg"
-opt.image2_path    = "./images/input/sample1_image2.jpg"
-opt.small_size     = (800, 360)
+opt.flow_cache     = os.path.join(opt.images_dir, "forward_flow.npy")
+opt.image1_path    = os.path.join(opt.images_dir, "image1.jpg")
+opt.image2_path    = os.path.join(opt.images_dir, "image2.jpg")
+opt.small_size     = (600, 480)
 opt.onnx_file      = "./RAFT-sim.onnx"
-os.makedirs(opt.save_dir, exist_ok=True)
-add_to_save = lambda x, y: cv_write(os.path.join(opt.save_dir, x), y)
+os.makedirs(opt.images_dir, exist_ok=True)
+add_to_save = lambda x, y: cv_write(os.path.join(opt.images_dir, x), y)
 
 
 
@@ -166,11 +166,11 @@ add_to_save(opt.save_name, flow_viz.flow_to_image(result_JBU)[:, :, ::-1])
 
 
 # 顺便保存下其它 resize 方法的结果, 用于对比
-add_to_save("./result_nearest.png",  flow_viz.flow_to_image(cv2.resize(forward_flow, (w_large, h_large), cv2.INTER_NEAREST))[:, :, ::-1])
-add_to_save("./result_bilinear.png", flow_viz.flow_to_image(cv2.resize(forward_flow, (w_large, h_large), cv2.INTER_LINEAR))[:, :, ::-1])
-add_to_save("./result_bicubic.png",  flow_viz.flow_to_image(cv2.resize(forward_flow, (w_large, h_large), cv2.INTER_CUBIC))[:, :, ::-1])
-add_to_save("./result_area.png",     flow_viz.flow_to_image(cv2.resize(forward_flow, (w_large, h_large), cv2.INTER_AREA))[:, :, ::-1])
-add_to_save("./result_lanzos4.png",  flow_viz.flow_to_image(cv2.resize(forward_flow, (w_large, h_large), cv2.INTER_LANCZOS4))[:, :, ::-1])
+add_to_save("result_nearest.png",  flow_viz.flow_to_image(cv2.resize(forward_flow, (w_large, h_large), cv2.INTER_NEAREST))[:, :, ::-1])
+add_to_save("result_bilinear.png", flow_viz.flow_to_image(cv2.resize(forward_flow, (w_large, h_large), cv2.INTER_LINEAR))[:, :, ::-1])
+add_to_save("result_bicubic.png",  flow_viz.flow_to_image(cv2.resize(forward_flow, (w_large, h_large), cv2.INTER_CUBIC))[:, :, ::-1])
+add_to_save("result_area.png",     flow_viz.flow_to_image(cv2.resize(forward_flow, (w_large, h_large), cv2.INTER_AREA))[:, :, ::-1])
+add_to_save("result_lanzos4.png",  flow_viz.flow_to_image(cv2.resize(forward_flow, (w_large, h_large), cv2.INTER_LANCZOS4))[:, :, ::-1])
 
 
 
