@@ -325,7 +325,7 @@ cv::Mat gamma_correct(const cv::Mat& origin, const float gamma=0.4, std::unorder
 
 int main() {
 	// 读取图像
-	cv::Mat hdr_image = cv::imread("./images/input/vinesunset_2.hdr", cv::IMREAD_ANYDEPTH);
+	cv::Mat hdr_image = cv::imread("./images/input/memorial.hdr", cv::IMREAD_ANYDEPTH);
 
     cv_show(hdr_image);
 
@@ -335,7 +335,7 @@ int main() {
         auto collections = bilateral_local_tonemapping(hdr_image, 10);
 
         // 保存
-        std::string save_dir("./images/output/vinesunset_");
+        std::string save_dir("./images/output/memorial_");
         for(const auto& item : collections) {
             cv_show(item.second, item.first.c_str());
             cv_write(item.second, save_dir + item.first + ".png");
@@ -343,7 +343,7 @@ int main() {
 	}
 
 	// 直接gamma校正
-	if(false) {
+	if(true) {
 	    auto corrected = gamma_correct(hdr_image, 0.5);
         cv_show(corrected);
         cv_write(corrected, "./images/output/gamma_correction.png");

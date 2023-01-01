@@ -63,7 +63,7 @@ with Timer("分离") as scope:
 		ctypes.c_int(radius), 
 		ctypes.c_int(EXTREMUM)
 	)
-	assert(numpy.allclose(result_1, result_2))
+assert(numpy.allclose(result_1, result_2))
 
 
 
@@ -77,7 +77,7 @@ with Timer("单调队列") as scope:
 		ctypes.c_int(radius), 
 		ctypes.c_int(EXTREMUM)
 	)
-	assert(numpy.allclose(result_2, result_3))
+assert(numpy.allclose(result_2, result_3))
 
 
 
@@ -91,7 +91,7 @@ with Timer("加速单调队列") as scope:
 		ctypes.c_int(radius), 
 		ctypes.c_int(EXTREMUM)
 	)
-	assert(numpy.allclose(result_3, result_4))
+assert(numpy.allclose(result_3, result_4))
 
 
 
@@ -105,7 +105,7 @@ with Timer("动态规划") as scope:
 		ctypes.c_int(radius), 
 		ctypes.c_int(EXTREMUM)
 	)
-	assert(numpy.allclose(result_4, result_5))
+assert(numpy.allclose(result_4, result_5))
 
 
 # 保存结果
