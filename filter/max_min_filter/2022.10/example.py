@@ -111,4 +111,5 @@ assert(numpy.allclose(result_4, result_5))
 # 保存结果
 comparison = numpy.concatenate([
 	color_image, numpy.stack([result_5, result_5, result_5], axis=-1)], axis=1)
-cv2.imwrite("./comparison.png", comparison, [cv2.IMWRITE_PNG_COMPRESSION, 0])
+# cv_show(comparison)
+cv2.imwrite("./comparison.png", result_5, [cv2.IMWRITE_PNG_COMPRESSION, 0])

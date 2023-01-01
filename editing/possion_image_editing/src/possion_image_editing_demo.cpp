@@ -228,7 +228,7 @@ cv::Mat possion_seamless_clone(
 
 void seamless_cloning_demo() {
     // 读取图像
-    std::string input_dir("../images/edit/3/");
+    std::string input_dir("./images/edit/3/");
     std::string save_dir("./images/output/3/");
     cv::Mat background = cv::imread(input_dir + "background.jpg");
     cv::Mat foreground = cv::imread(input_dir + "src_image.png");
@@ -248,7 +248,7 @@ void seamless_cloning_demo() {
 
 
     // 其它经典例子
-    input_dir = "../images/edit/1/";
+    input_dir = "./images/edit/1/";
     save_dir = "./images/output/1/";
     background = cv::imread(input_dir + "bg.jpg");
     foreground = cv::imread(input_dir + "fg.jpg");
@@ -261,7 +261,7 @@ void seamless_cloning_demo() {
     cv_write(result, save_dir + "pure_laplace_2.png");
 
 
-    input_dir = "../images/edit/4/";
+    input_dir = "./images/edit/4/";
     save_dir = "./images/output/4/";
     background = cv::imread(input_dir + "background.png");
     foreground = cv::imread(input_dir + "foreground.png");
@@ -275,7 +275,7 @@ void seamless_cloning_demo() {
     cv_write(result, save_dir + "mixed_splited_laplace_3.png");
 
     /* 这个例子会报错, 应该是线性方程组无解
-    input_dir = "../images/edit/2/";
+    input_dir = "./images/edit/2/";
     save_dir = "./images/output/2/";
     background = cv::imread(input_dir + "bg.jpg");
     foreground = cv::imread(input_dir + "fg.jpg");
@@ -285,7 +285,7 @@ void seamless_cloning_demo() {
     cv_write(result, save_dir + "mixed_splited_laplace_4.png");
     */
 
-    input_dir = "../images/edit/2/";
+    input_dir = "./images/edit/2/";
     save_dir = "./images/output/2/";
     background = cv::imread(input_dir + "background.jpg");
     foreground = cv::imread(input_dir + "foreground.png");
@@ -299,7 +299,7 @@ void seamless_cloning_demo() {
     cv_write(result, save_dir + "mixed_splited_laplace_4.png");
 
 
-    input_dir = "../images/edit/5/";
+    input_dir = "./images/edit/5/";
     save_dir = "./images/output/5/";
     background = cv::imread(input_dir + "background.png");
     foreground = cv::imread(input_dir + "foreground.png");
@@ -312,7 +312,7 @@ void seamless_cloning_demo() {
     cv_write(result, save_dir + "mixed_splited_laplace_5.png");
 
 
-    input_dir = "../images/edit/6/";
+    input_dir = "./images/edit/6/";
     save_dir = "./images/output/6/";
     background = cv::imread(input_dir + "background.png");
     foreground = cv::imread(input_dir + "foreground.png");
@@ -325,7 +325,7 @@ void seamless_cloning_demo() {
     cv_write(result, save_dir + "mixed_splited_laplace_6.png");
 
 
-    input_dir = "../images/edit/7/";
+    input_dir = "./images/edit/7/";
     save_dir = "./images/output/7/";
     background = cv::imread(input_dir + "background.png");
     foreground = cv::imread(input_dir + "foreground_1.png");
@@ -338,7 +338,7 @@ void seamless_cloning_demo() {
     cv_write(result, save_dir + "pure_laplace_7.png");
 
 
-    input_dir = "../images/edit/8/";
+    input_dir = "./images/edit/8/";
     save_dir = "./images/output/8/";
     background = cv::imread(input_dir + "background.png");
     cv::resize(background, background, cv::Size(background.cols + 100, background.rows));
@@ -352,7 +352,7 @@ void seamless_cloning_demo() {
     cv_write(result, save_dir + "pure_laplace_8.png");
 
 
-    input_dir = "../images/edit/9/";
+    input_dir = "./images/edit/9/";
     save_dir = "./images/output/9/";
     background = cv::imread(input_dir + "background.png");
     foreground = cv::imread(input_dir + "foreground_1.png");
@@ -369,7 +369,7 @@ void seamless_cloning_demo() {
     cv_write(result, save_dir + "pure_laplace_9.png");
 
 
-    input_dir = "../images/edit/14/";
+    input_dir = "./images/edit/14/";
     save_dir = "./images/output/14/";
     background = cv::imread(input_dir + "background.png");
     cv::resize(background, background, cv::Size(160, 160));
@@ -388,7 +388,7 @@ void seamless_cloning_demo() {
 
 void possion_edit_demo_1() {
     // 读取图像
-    std::string input_dir("../images/edit/10/");
+    std::string input_dir("./images/edit/10/");
     std::string save_dir("./images/output/10/");
     cv::Mat background = cv::imread(input_dir + "background.png");
     cv::Mat mask = cv::imread(input_dir + "mask.png", cv::IMREAD_GRAYSCALE);
@@ -444,7 +444,7 @@ void possion_edit_demo_1() {
 
 void possion_texture_flatten_demo() {
     // 读取图像
-    std::string input_dir("../images/edit/11/");
+    std::string input_dir("./images/edit/11/");
     std::string save_dir("./images/output/11/");
     cv::Mat background = cv::imread(input_dir + "background.png");
     cv::Mat mask = cv::imread(input_dir + "mask.png", cv::IMREAD_GRAYSCALE);
@@ -463,7 +463,7 @@ void possion_texture_flatten_demo() {
 
 void possion_content_flip_demo() {
         // 读取图像
-    std::string input_dir("../images/edit/13/");
+    std::string input_dir("./images/edit/13/");
     std::string save_dir("./images/output/13/");
     cv::Mat background = cv::imread(input_dir + "background.png");
     cv::Mat mask = cv::imread(input_dir + "mask_2.png", cv::IMREAD_GRAYSCALE);
@@ -521,7 +521,7 @@ void possion_content_flip_demo() {
 
 
 void seam_clone_demo() {
-    std::string input_dir = "../images/edit/14/";
+    std::string input_dir = "./images/edit/14/";
     std::string save_dir = "./images/output/14/";
     cv::Mat background = cv::imread(input_dir + "background.png");
     cv::Mat foreground = cv::imread(input_dir + "foreground.png");
@@ -548,7 +548,7 @@ void seam_clone_demo() {
 
 
 void possion_texture_transform_demo() {
-    std::string input_dir = "../images/edit/17/";
+    std::string input_dir = "./images/edit/17/";
     std::string save_dir = "./images/output/17/";
     cv::Mat background = cv::imread(input_dir + "background.png");
     cv::Mat mask = cv::imread(input_dir + "mask_1.png", cv::IMREAD_GRAYSCALE);
@@ -586,7 +586,7 @@ void possion_texture_transform_demo() {
 
 
 void possion_illumination_change_demo() {
-    std::string input_dir = "../images/edit/16/";
+    std::string input_dir = "./images/edit/16/";
     std::string save_dir = "./images/output/16/";
     cv::Mat background = cv::imread(input_dir + "background.png");
     cv::Mat mask = cv::imread(input_dir + "mask.png", cv::IMREAD_GRAYSCALE);
