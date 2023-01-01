@@ -49,7 +49,7 @@ namespace {
 
 void denoise_gray_demo() {
     // 根据图片路径读取图像
-    const char* noise_path = "../../images/denoise/Kodak24/20.png";
+    const char* noise_path = "./images/input/denoise/Kodak24/20.png";
     auto noise_image = cv::imread(noise_path);
     if(noise_image.empty()) {
         std::cout << "读取图片  " << noise_path << "  失败 !" << std::endl;
@@ -84,7 +84,7 @@ void denoise_gray_demo() {
 
 void denoise_rgb_demo_1() {
     // 根据图片路径读取图像
-    const char* noise_path = "../../images/denoise/woman_1.png";
+    const char* noise_path = "./images/input/denoise/woman_1.png";
     auto noise_image = cv::imread(noise_path);
     if(noise_image.empty()) {
         std::cout << "读取图片  " << noise_path << "  失败 !" << std::endl;
@@ -115,9 +115,9 @@ int main() {
     denoise_gray_demo();
 
     // 彩色图的分通道 non_local_means
-    // denoise_rgb_demo_1();
+    denoise_rgb_demo_1();
 
     // 彩色图的三通道一起 non_local_means
-    // denoise_rgb_demo_2();
+    denoise_rgb_demo_2();
     return 0;
 }

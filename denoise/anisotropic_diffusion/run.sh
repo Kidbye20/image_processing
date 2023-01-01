@@ -2,4 +2,4 @@ cd build
 cmake .. -G "MinGW Makefiles"
 mingw32-make -j4
 cd ..
-./bin/exposure_fusion.exe
+./bin/anisotropic_diffusion_filter.exe

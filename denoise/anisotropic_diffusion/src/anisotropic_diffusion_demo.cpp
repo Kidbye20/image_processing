@@ -167,7 +167,7 @@ cv::Mat anisotropic_diffusion_denoise_color(
 int main() {
     std::cout << "opencv  :  " << CV_VERSION << std::endl;
 
-    std::string noise_path("../images/denoise/woman_3.png");
+    std::string noise_path("./images/input/woman_3.png");
     auto noise_image = cv::imread(noise_path);
     if(noise_image.empty()) {
         std::cout << "读取图像 " << noise_path << " 失败 !" << std::endl;

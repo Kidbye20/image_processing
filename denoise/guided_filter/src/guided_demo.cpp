@@ -49,7 +49,7 @@ namespace {
 
 void denoise_gray_demo() {
     // 根据图片路径读取图像
-    const char* noise_path = "../images/denoise/Kodak24/18.png";
+    const char* noise_path = "./images/input/denoise/Kodak24/18.png";
     auto noise_image = cv::imread(noise_path);
     if(noise_image.empty()) {
         std::cout << "读取图片  " << noise_path << "  失败 !" << std::endl;
@@ -69,7 +69,7 @@ void denoise_gray_demo() {
 
 void denoise_rgb_demo_1() {
     // 根据图片路径读取图像
-    const char* noise_path = "../images/denoise/Kodak24/3.png";
+    const char* noise_path = "./images/input/denoise/Kodak24/3.png";
     const auto noise_image = cv::imread(noise_path);
     if(noise_image.empty()) {
         std::cout << "读取图片  " << noise_path << "  失败 !" << std::endl;
@@ -95,7 +95,7 @@ void denoise_rgb_demo_1() {
 
 void denoise_rgb_demo_2() {
     // 根据图片路径读取图像
-    const char* noise_path = "../images/denoise/Kodak24/8.png";
+    const char* noise_path = "./images/input/denoise/Kodak24/8.png";
     const auto noise_image = cv::imread(noise_path);
     if(noise_image.empty()) {
         std::cout << "读取图片  " << noise_path << "  失败 !" << std::endl;
@@ -127,7 +127,7 @@ void denoise_rgb_demo_2() {
 
 void denoise_rgb_demo_3() {
     // 根据图片路径读取图像
-    const char* noise_path = "../images/denoise/Kodak24/22.png";
+    const char* noise_path = "./images/input/denoise/Kodak24/22.png";
     const auto noise_image = cv::imread(noise_path);
     if(noise_image.empty()) {
         std::cout << "读取图片  " << noise_path << "  失败 !" << std::endl;
@@ -159,13 +159,13 @@ void denoise_rgb_demo_3() {
 
 void denoise_flash_demo() {
     // 根据图片路径读取图像
-    const char* flash_path = "../images/flash/cave-flash.bmp";
+    const char* flash_path = "./images/input/flash/cave-flash.bmp";
     const auto flash_image = cv::imread(flash_path);
     if(flash_image.empty()) {
         std::cout << "读取图片  " << flash_path << "  失败 !" << std::endl;
         return;
     }
-    const char* noflash_path = "../images/flash/cave-noflash.bmp";
+    const char* noflash_path = "./images/input/flash/cave-noflash.bmp";
     const auto noflash_image = cv::imread(noflash_path);
     if(noflash_image.empty()) {
         std::cout << "读取图片  " << noflash_path << "  失败 !" << std::endl;
@@ -195,7 +195,7 @@ void denoise_flash_demo() {
 
 void detail_enhancement_demo() {
     // 根据图片路径读取图像
-    const char* noise_path = "../images/detail/flower.bmp";
+    const char* noise_path = "./images/input/detail/flower.bmp";
     const auto noise_image = cv::imread(noise_path);
     if(noise_image.empty()) {
         std::cout << "读取图片  " << noise_path << "  失败 !" << std::endl;
@@ -236,7 +236,7 @@ void GEF_demo() {
 
 void matting_demo() {
     // ---------- 【1】 读取 mask 图像(需要转成单通道) 和引导图像(彩色原图)
-    const char* mask_path = "../images/matting/bird_mask.png";
+    const char* mask_path = "./images/input/matting/bird_mask.png";
     const auto mask_image = cv::imread(mask_path);
     if(mask_image.empty()) {
         std::cout << "读取图片  " << mask_path << "  失败 !" << std::endl;
@@ -245,7 +245,7 @@ void matting_demo() {
     cv::Mat mask_image_gray;
     cv::cvtColor(mask_image, mask_image_gray, cv::COLOR_BGR2GRAY);
 
-    const char* detail_path = "../images/matting/bird_color.png";
+    const char* detail_path = "./images/input/matting/bird_color.png";
     const auto detail_image = cv::imread(detail_path);
     if(detail_image.empty()) {
         std::cout << "读取图片  " << detail_path << "  失败 !" << std::endl;
@@ -274,20 +274,20 @@ void matting_demo() {
 
 int main() {
     std::cout << "opencv  :  " << CV_VERSION << std::endl;
-//    // 灰度图如何根据引导滤波去噪
-//    denoise_gray_demo();
-//    // 彩色图如何根据引导滤波去噪
-//    denoise_rgb_demo_1();
-//    // 探究 epsilon 对滤波的影响
-//    denoise_rgb_demo_2();
-//    // 探究滤波核半径对滤波的影响
-//    denoise_rgb_demo_3();
-//    // flash 去噪实验
-//    denoise_flash_demo();
+    // 灰度图如何根据引导滤波去噪
+    denoise_gray_demo();
+    // 彩色图如何根据引导滤波去噪
+    denoise_rgb_demo_1();
+    // 探究 epsilon 对滤波的影响
+    denoise_rgb_demo_2();
+    // 探究滤波核半径对滤波的影响
+    denoise_rgb_demo_3();
+    // flash 去噪实验
+    denoise_flash_demo();
     // 细节增强实验
     detail_enhancement_demo();
     // 抠图实验
-//    matting_demo();
+    matting_demo();
     // 还差个图像融合, 去雾
     return 0;
 }

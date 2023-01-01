@@ -242,7 +242,7 @@ int main() {
     std::setbuf(stdout, 0);
 
     // 读取图像
-    cv::Mat noisy_image = cv::imread("./images/input/example.png", 0);
+    cv::Mat noisy_image = cv::imread("./images/input/demo.png", 0);
     cv::resize(noisy_image, noisy_image, {50, 50});
 
     // 用最暴力的网格做均值滤波
