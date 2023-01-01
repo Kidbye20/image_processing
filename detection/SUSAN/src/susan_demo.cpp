@@ -186,7 +186,7 @@ namespace SUSAN_CORNER {
 
     void corner_detect_demo() {
         const std::string save_dir("./images/output/corner_detection/");
-        std::string origin_path("../images/corner/harris_demo_1.png");
+        std::string origin_path("./images/input/corner/harris_demo_1.png");
         const auto origin_image = cv::imread(origin_path);
         if(origin_image.empty()) {
             std::cout << "读取图像 " << origin_path << " 失败 !" << std::endl;
@@ -207,52 +207,52 @@ namespace SUSAN_CORNER {
         auto detection = susan_corner_detect(origin_image, 3, 10, 45);
         corner_display(origin_image, detection, save_dir + "horse.png");
 
-        another_image = cv::imread("../images/corner/corner_2.png");
+        another_image = cv::imread("./images/input/corner/corner_2.png");
         detection = susan_corner_detect(another_image, 3, 10, 45);
         corner_display(another_image, detection, save_dir + "table.png");
 
-        another_image = cv::imread("../images/corner/corner_1.png");
+        another_image = cv::imread("./images/input/corner/corner_1.png");
         detection = susan_corner_detect(another_image, 3, 5, 10);
         corner_display(another_image, detection, save_dir + "toy.png");
 
-        another_image = cv::imread("../images/corner/corner_3.png");
+        another_image = cv::imread("./images/input/corner/corner_3.png");
         detection = susan_corner_detect(another_image, 3, 4, 30);
         corner_display(another_image, detection, save_dir + "house.png", 2, 2);
 
-        another_image = cv::imread("../images/corner/a0515-NKIM_MG_6602.png");
+        another_image = cv::imread("./images/input/corner/a0515-NKIM_MG_6602.png");
         detection = susan_corner_detect(another_image, 3, 8, 50);
         corner_display(another_image, detection, save_dir + "French.png", 2, 2);
 
-        another_image = cv::imread("../images/corner/a0423-07-06-02-at-07h35m36-s_MG_1355.png");
+        another_image = cv::imread("./images/input/corner/a0423-07-06-02-at-07h35m36-s_MG_1355.png");
         detection = susan_corner_detect(another_image, 3, 7, 45);
         corner_display(another_image, detection, save_dir + "gugong.png", 2, 2);
 
-        another_image = cv::imread("../images/corner/a0367-IMG_0338.png");
+        another_image = cv::imread("./images/input/corner/a0367-IMG_0338.png");
         detection = susan_corner_detect(another_image, 3, 7, 60);
         corner_display(another_image, detection, save_dir + "city.png", 2, 2);
 
-        another_image = cv::imread("../images/corner/a0516-IMG_4420.png");
+        another_image = cv::imread("./images/input/corner/a0516-IMG_4420.png");
         detection = susan_corner_detect(another_image, 3, 10, 30);
         corner_display(another_image, detection, save_dir + "car.png", 2, 2);
 
         // 如果是噪声的话
-        const auto noisy_image = add_gaussian_noise(cv::imread("../images/corner/a0515-NKIM_MG_6602.png"));
+        const auto noisy_image = add_gaussian_noise(cv::imread("./images/input/corner/a0515-NKIM_MG_6602.png"));
         detection = susan_corner_detect(noisy_image, 3, 10, 30);
         corner_display(noisy_image, detection, save_dir + "noisy.png", 2, 2);
 
         // 如果是旋转的话
-        const auto rotated_image = my_rotate(cv::imread("../images/corner/a0515-NKIM_MG_6602.png"));
+        const auto rotated_image = my_rotate(cv::imread("./images/input/corner/a0515-NKIM_MG_6602.png"));
         detection = susan_corner_detect(rotated_image, 3, 10, 45);
         corner_display(rotated_image, detection, save_dir + "rotated.png", 2, 2);
 
         // 如果是灰度变化
-        cv::Mat darken_image = 0.5 * cv::imread("../images/corner/a0515-NKIM_MG_6602.png");
+        cv::Mat darken_image = 0.5 * cv::imread("./images/input/corner/a0515-NKIM_MG_6602.png");
         darken_image.convertTo(darken_image, CV_8UC3);
         detection = susan_corner_detect(darken_image, 3, 10, 23);
         corner_display(darken_image, detection, save_dir + "darken.png", 2, 2);
 
         // 如果是尺度变化
-        cv::Mat scaled_image = cv::imread("../images/corner/a0515-NKIM_MG_6602.png");
+        cv::Mat scaled_image = cv::imread("./images/input/corner/a0515-NKIM_MG_6602.png");
         cv::resize(scaled_image, scaled_image, cv::Size(scaled_image.cols / 4, scaled_image.rows / 4));
         scaled_image.convertTo(scaled_image, CV_8UC3);
         detection = susan_corner_detect(scaled_image, 3, 2, 45);
@@ -467,7 +467,7 @@ namespace SUSAN_EDGE {
 
     void edge_detect_demo() {
         const std::string save_dir("./images/output/edge_detection/");
-        std::string origin_path("../images/corner/a2992-NKIM_MG_7779.png");
+        std::string origin_path("./images/input/corner/a2992-NKIM_MG_7779.png");
         const auto origin_image = cv::imread(origin_path);
         if(origin_image.empty()) {
             std::cout << "读取图像 " << origin_path << " 失败 !" << std::endl;
@@ -590,7 +590,7 @@ namespace SUSAN_DENOISE {
 
     void edge_preserving_denoise_demo() {
         const std::string save_dir("./images/output/denoise/");
-        std::string origin_path("../images/denoise/woman_1.png");
+        std::string origin_path("./images/input/denoise/woman_1.png");
         const auto origin_image = cv::imread(origin_path);
         if(origin_image.empty()) {
             std::cout << "读取图像 " << origin_path << " 失败 !" << std::endl;
@@ -602,19 +602,19 @@ namespace SUSAN_DENOISE {
         cv_show(comparison);
         cv_write(comparison, save_dir + "woman_1.png");
 
-        another_image = cv::imread("../images/denoise/woman_3.jpg");
+        another_image = cv::imread("./images/input/denoise/woman_3.jpg");
         denoised = susan_edge_preserving_denoise(another_image, 6, 2.0, 30);
         comparison = cv_concat({another_image, denoised});
         cv_show(comparison);
         cv_write(comparison, save_dir + "woman_3.png");
 
-        another_image = cv::imread("../images/denoise/Kodak24/22.png");
+        another_image = cv::imread("./images/input/denoise/Kodak24/22.png");
         denoised = susan_edge_preserving_denoise(another_image, 6, 2.0, 30);
         comparison = cv_concat({another_image, denoised});
         cv_show(comparison);
         cv_write(comparison, save_dir + "Kodak24_22.png");
 
-        another_image = cv::imread("../images/denoise/Kodak24/18.png");
+        another_image = cv::imread("./images/input/denoise/Kodak24/18.png");
         denoised = susan_edge_preserving_denoise(another_image, 6, 2.0, 30);
         comparison = cv_concat({another_image, denoised});
         cv_show(comparison);
@@ -628,10 +628,10 @@ int main() {
     std::cout << "opencv  :  " << CV_VERSION << std::endl;
 
     // 角点检测
-    // SUSAN_CORNER::corner_detect_demo();
+    SUSAN_CORNER::corner_detect_demo();
 
     // 边缘检测
-    // SUSAN_EDGE::edge_detect_demo();
+    SUSAN_EDGE::edge_detect_demo();
 
     // 去噪
     SUSAN_DENOISE::edge_preserving_denoise_demo();

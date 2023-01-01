@@ -586,7 +586,7 @@ void laplace_image_blending_demo() {
 int main() {
 
     // 拉普拉斯金字塔分解
-    // laplace_decomposition_demo();
+    laplace_decomposition_demo();
 
     // 拉普拉斯图像融合
     laplace_image_blending_demo();

@@ -72,7 +72,7 @@ namespace {
 
 
 void demo_1() {
-    std::string noise_path("../images/detail/a0118-20051223_103622__MG_0617_noisy.png");
+    std::string noise_path("./images/input/a0118-20051223_103622__MG_0617_noisy.png");
     auto origin_image = cv::imread(noise_path);
     if(origin_image.empty()) {
         std::cout << "读取图像 " << noise_path << " 失败 !" << std::endl;
@@ -95,7 +95,7 @@ void demo_1() {
 
 
 void demo_2() {
-    const std::string image_path("../images/detail/a0015-DSC_0081.png"); // a0015-DSC_0081.png  a0025-kme_298.png
+    const std::string image_path("./images/input/a0015-DSC_0081.png"); // a0015-DSC_0081.png  a0025-kme_298.png
     auto origin_image = cv::imread(image_path);
     if(origin_image.empty()) {
         std::cout << "读取图像 " << image_path << " 失败 !" << std::endl;
@@ -118,7 +118,7 @@ void demo_2() {
 
 
 void demo_5() {
-    const std::string image_path("../images/detail/a0032-jmac_MG_0266.png"); // a0015-DSC_0081.png  a0025-kme_298.png
+    const std::string image_path("./images/input/a0032-jmac_MG_0266.png"); // a0015-DSC_0081.png  a0025-kme_298.png
     auto origin_image = cv::imread(image_path);
     if(origin_image.empty()) {
         std::cout << "读取图像 " << image_path << " 失败 !" << std::endl;
@@ -153,7 +153,7 @@ void demo_5() {
 
 
 void demo_6() {
-    std::string noise_path("../images/detail/blob_2.png");
+    std::string noise_path("./images/input/blob_2.png");
     auto origin_image = cv::imread(noise_path);
     if(origin_image.empty()) {
         std::cout << "读取图像 " << noise_path << " 失败 !" << std::endl;
@@ -179,7 +179,7 @@ void demo_6() {
 
 
 void demo_7() {
-    std::string noise_path("../images/detail/blob_2.png");
+    std::string noise_path("./images/input/blob_2.png");
     auto origin_image = cv::imread(noise_path);
     if(origin_image.empty()) {
         std::cout << "读取图像 " << noise_path << " 失败 !" << std::endl;
@@ -195,23 +195,23 @@ int main() {
     std::cout << "opencv  :  " << CV_VERSION << std::endl;
 
     // Laplace 检测边缘
-    // demo_1();
+    demo_1();
 
     // LOG
-    // demo_2();
+    demo_2();
 
     // LOG uint8 损失精度的优化
 
     // LOG 模板分离
 
     // 检测关键点
-    // demo_5();
+    demo_5();
 
     // LOG 检测关键点
     demo_6();
 
     // 验证单尺度下的
-    // demo_7();
+    demo_7();
 
     // DOB 近似 LOG  Difference of boxes
     return 0;

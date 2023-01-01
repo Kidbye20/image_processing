@@ -70,7 +70,7 @@ namespace {
 
 
 void demo_1() {
-    std::string noise_path("../images/detail/a1058-_I2E8070_noisy.png");
+    std::string noise_path("./images/input/a1058-_I2E8070.png");
     auto noise_image = cv::imread(noise_path);
     if(noise_image.empty()) {
         std::cout << "读取图像 " << noise_path << " 失败 !" << std::endl;

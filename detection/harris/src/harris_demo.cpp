@@ -272,8 +272,8 @@ key_points_type harris_corner_detect(
         }
     }
     // 在这里看看边缘
-    int new_threshold;
-    while (std::cin >> new_threshold) {
+    float new_threshold = 3.f;
+    do {
         cv::Mat display = source.clone();
         for(int i = 0;i < length; ++i) {
             if(R[i] < -new_threshold) {
@@ -281,7 +281,7 @@ key_points_type harris_corner_detect(
             }
         }
         cv_show(display);
-    }
+    } while (0);
     // 准备一个结果
     key_points_type detection;
     // 需要进行局部非极大化抑制
@@ -376,7 +376,7 @@ key_points_type shi_tomasi_corner_detect(
 
 void demo_1() {
     const std::string save_dir("./images/output/1/");
-    std::string origin_path("../images/detail/harris_demo_1.png"); // harris_demo_1.png
+    std::string origin_path("./images/input/harris_demo_1.png"); // harris_demo_1.png
     const auto origin_image = cv::imread(origin_path);
     if(origin_image.empty()) {
         std::cout << "读取图像 " << origin_path << " 失败 !" << std::endl;
