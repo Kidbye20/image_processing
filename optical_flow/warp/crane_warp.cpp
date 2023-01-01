@@ -145,12 +145,9 @@ void forward_warp_using_flow_inplementation(
 			// 获取当前坐标 和 对应的光流值
 			float u = flow_ptr[2 * j + 1];
 			float v = flow_ptr[2 * j];
-			// 获取偏移的位置
-			float x = clip(i + u, 0.f, (height - 1) * 1.f);
-			float y = clip(j + v, 0.f, (width - 1) * 1.f);
 			// 找到 (i + u, j + v 最近的那个点)
-			int __x = nearest_round(x);
-			int __y = nearest_round(y);
+			int __x = clip(nearest_round(i + u), 0.f, (height - 1) * 1.f);
+			int __y = clip(nearest_round(j + v), 0.f, (width - 1)  * 1.f);
 			// 先检查 (__x, __y) 位置, 是不是被赋值过, 如果本次的光流强度更大, 默认是前景, 保留前景
 			int target_pos = __x * width + __y;
 			float intensity = compute_flow_intensity(u, v);
