@@ -50,7 +50,7 @@ namespace {
 
 void denoise_gray_demo_1() {
     // ---------- 【1】根据图片路径读取图像
-    const char* noise_path = "../images/contrast/over_exposure.jpg";
+    const char* noise_path = "./images/input/over_exposure.jpg";
     auto low_contrast_image = cv::imread(noise_path);
     if(low_contrast_image.empty()) {
         std::cout << "读取图片  " << noise_path << "  失败 !" << std::endl;
@@ -74,7 +74,7 @@ void denoise_gray_demo_1() {
 
 void denoise_gray_demo_2() {
     // ---------- 【1】根据图片路径读取图像
-    const char* noise_path = "../images/contrast/people.png";
+    const char* noise_path = "./images/input/people.png";
     auto low_contrast_image = cv::imread(noise_path);
     if(low_contrast_image.empty()) {
         std::cout << "读取图片  " << noise_path << "  失败 !" << std::endl;
@@ -96,7 +96,7 @@ void denoise_gray_demo_2() {
 
 void denoise_gray_demo_3() {
     // ---------- 【1】根据图片路径读取图像
-    const char* noise_path = "../images/contrast/building.png";
+    const char* noise_path = "./images/input/building.png";
     auto low_contrast_image = cv::imread(noise_path);
     if(low_contrast_image.empty()) {
         std::cout << "读取图片  " << noise_path << "  失败 !" << std::endl;

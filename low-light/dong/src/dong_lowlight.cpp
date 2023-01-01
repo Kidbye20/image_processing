@@ -189,24 +189,65 @@ details_type dong_enhance(
 }
 
 
-int main() {
-	// 读取图像
-	cv::Mat low_light = cv::imread("../datasets/LIME/10.bmp"); // "../datasets/LOL/775.png"
+
+
+void demo_lowlight_enhance(const std::string& image_path="./images/input/a4542-Duggan_080411_6019.png") {
+    // 读取图像
+    cv::Mat low_light = cv::imread(image_path);
 
     cv_show(low_light);
 
     // 开始增强
     auto collections = dong_enhance(low_light, 3, 100, 0.8, 0.5, false);
 
-//    cv::Mat concat;
-//    cv::hconcat(std::vector<cv::Mat>({low_light, collections.back().second}), concat);
-//    cv_show(concat);
+    cv::Mat concat;
+    cv::hconcat(std::vector<cv::Mat>({low_light, collections.back().second}), concat);
+    cv_show(concat);
 
     // 展示
     for(const auto& item : collections) {
         cv_show(item.second, item.first.c_str());
         cv_write(item.second, "./images/output/" + item.first + ".png");
     }
+}
+
+
+
+void demo_lowlight_dehaze(const std::string& image_path) {
+    // 读取图像
+    cv::Mat hazy_image = cv::imread(image_path);
+
+    // cv_show(hazy_image);
+
+    // 获取一张逆图像
+    cv::Mat low_light = cv::Mat(hazy_image.rows, hazy_image.cols, CV_8UC3, cv::Scalar(255, 255, 255)) - hazy_image;
+    // cv_show(low_light);
+
+    // 开始增强
+    auto collections = dong_enhance(low_light, 3, 100, 0.8, 0.7, false);
+
+    cv::Mat concat;
+    cv::hconcat(std::vector<cv::Mat>({low_light, collections.back().second}), concat);
+    cv_show(concat);
+
+    // 展示
+    for(const auto& item : collections) {
+        cv_show(item.second, item.first.c_str());
+        cv_write(item.second, "./images/output/dehaze_" + item.first + ".png");
+    }
+
+
+}
+
+
+
+
+int main() {
+	// demo_lowlight_enhance("./images/input/a4542-Duggan_080411_6019.png");
+
+    // demo_lowlight_dehaze("./images/input/8729.png");
+    demo_lowlight_dehaze("./images/input/tree2.png");
+    // demo_lowlight_dehaze("tiananmen1.bmp");
 
     return 0;
 }

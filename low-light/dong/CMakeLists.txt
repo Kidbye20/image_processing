@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.19)
-project(colorize)
+project(dong_enhance)
 
 # 添加编译选项
 SET(CMAKE_CXX_FLAGS "-std=c++17 -O2")
 
-set(PROJECT_SOURCE_DIR ./)
+set(PROJECT_SOURCE_DIR ..)
 
 # 生成文件的输出目录
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
@@ -13,8 +13,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # 添加可执行文件
-add_executable(colorize
-        src/dong_lowlight.cpp
+add_executable(dong_enhance
+    src/dong_lowlight.cpp
 )
 
 set(OpenCV_DIR "D:/environments/C++/OpenCV/opencv-4.5.2/build_TDM-GCC/install/")
@@ -29,4 +29,4 @@ link_directories(${OpenCV_LIBRARY_DIRS} )
 include_directories(D:/environments/C++/3rdparty/Eigen3/eigen-3.3.9/installed/include/eigen3)
 
 ## 设置库文件
-target_link_libraries(colorize ${OpenCV_LIBS})
+target_link_libraries(dong_enhance ${OpenCV_LIBS})
