@@ -15,3 +15,9 @@ backup.cpp
 *.so
 *.mexw64
 *.pyc
+Makefile
+CMakeCache.txt
+CMakeFiles/*
+/CMakeFiles
+CMakeFiles
+CMakeFiles/

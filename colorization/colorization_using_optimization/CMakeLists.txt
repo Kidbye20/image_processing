@@ -1,9 +1,16 @@
+
+
+
 cmake_minimum_required(VERSION 3.19)
 project(colorize)
 
+
+# 指定这个还是会调用 visual studio 的 cl, 得在命令行 -G "MinGW Makefiles" 才能正常使用 gcc, g++
+# SET(CMAKE_C_COMPILER "gcc")
+# SET(CMAKE_CXX_COMPILER "g++")
+
 # 添加编译选项
 SET(CMAKE_CXX_FLAGS "-std=c++17 -O2")
-
 set(PROJECT_SOURCE_DIR ./)
 
 # 生成文件的输出目录
@@ -14,8 +21,8 @@ include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # 添加可执行文件
 add_executable(colorize
-                   src/colorize.cpp
-        )
+	src/colorize.cpp
+)
 
 set(OpenCV_DIR "D:/environments/C++/OpenCV/opencv-4.5.2/build_TDM-GCC/install/")
 # 寻找 opencv 的库
