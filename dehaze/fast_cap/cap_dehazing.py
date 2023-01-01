@@ -99,7 +99,7 @@ def evaluate_atmospheric_light(haze, depth, radius=7, proportion=0.001, correct=
 history = {}
 
 # 读取图像
-image_path = './images/input/girls.jpg'
+image_path = './images/input/swan.png'
 haze_image = cv2.imread(image_path)
 I = haze_image.astype("float32") / 255
 

@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.12)
-project(guided_filter)
+project(dark_channel_dehaze)
 
 # 添加编译选项
 SET(CMAKE_CXX_FLAGS "-std=c++14 -O1")
 
 
-set(PROJECT_SOURCE_DIR ./)
+set(PROJECT_SOURCE_DIR ..)
 
 # 生成文件的输出目录
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
@@ -15,7 +15,10 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/include/)
 
 # 添加可执行文件
-add_executable(guided_filter src/dehaze_demo.cpp src/dark_channel_prior.cpp src/guided_filter.cpp include/cv_engine.h)
+add_executable(dark_channel_dehaze 
+	src/dehaze_demo.cpp 
+	src/dark_channel_prior.cpp 
+	src/guided_filter.cpp)
 
 
 # 设置  opencv
@@ -33,5 +36,5 @@ include_directories(D:/environments/C++/3rdparty/Eigen3/eigen-3.3.9/installed/in
 
 
 # 设置库文件
-target_link_libraries(guided_filter ${OpenCV_LIBS})
+target_link_libraries(dark_channel_dehaze ${OpenCV_LIBS})
 

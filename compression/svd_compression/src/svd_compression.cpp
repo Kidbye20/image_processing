@@ -71,24 +71,6 @@ using crane_type = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>;
 
 
 int main() {
-    const std::string image_path("./images/input/a0372-WP_CRW_6207.png");
-    cv::Mat origin_image = cv::imread(image_path);
-    assert(not origin_image.empty() and "图像读取失败");
-    cv::cvtColor(origin_image, origin_image, cv::COLOR_BGR2GRAY);
-    origin_image.convertTo(origin_image, CV_32F);
-    const int H = origin_image.rows;
-    const int W = origin_image.cols;
-    crane_type A;
-    cv::cv2eigen(origin_image, A);
-    std::cout << A.rows() << ", " << A.cols() << ", " << std::endl;
-    // 计算 SVD
-    Eigen::JacobiSVD<Eigen::MatrixXf> svd_solver(A, Eigen::ComputeThinU | Eigen::ComputeThinV);
-    Eigen::MatrixXf U = svd_solver.matrixU();
-    Eigen::MatrixXf V = svd_solver.matrixV();
-    Eigen::MatrixXf S = svd_solver.singularValues();
-    std::cout << U.rows() << ", " << U.cols() << ", " << U.size() << std::endl;
-    std::cout << V.rows() << ", " << V.cols() << ", " << V.size() << std::endl;
-    std::cout << S.rows() << ", " << S.cols() << ", " << S.size() << std::endl;
     // waiting
     return 0;
 }

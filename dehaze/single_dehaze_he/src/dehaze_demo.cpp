@@ -22,25 +22,25 @@ void dark_channel_prior_demo_6();
 int main() {
 
     // 找几张图象验证一下暗通道先验
-//    dark_prior_validation();
-//
+    dark_prior_validation();
+
     // 最简单的 demo, 只看去雾效果
     dark_channel_prior_demo_1();
-//
-    // 最开始的探索
-//    dark_channel_prior_demo_2();
-//
-    // 深度估计 + 错误的例子
-//    dark_channel_prior_demo_3();
-//
-    // 把估计 A 的那些点都抠出来
-//    dark_channel_prior_demo_4();
 
-//    // 是否使用 t0
-//    dark_channel_prior_demo_5();
+    // 最开始的探索
+    dark_channel_prior_demo_2();
+
+    // 深度估计 + 错误的例子
+    dark_channel_prior_demo_3();
+
+    // 把估计 A 的那些点都抠出来
+    dark_channel_prior_demo_4();
+
+    // 是否使用 t0
+    dark_channel_prior_demo_5();
 
     // 天安门那张图为什么我会错
-//    dark_channel_prior_demo_6();
+    dark_channel_prior_demo_6();
 
     return 0;
 }
@@ -103,8 +103,8 @@ namespace {
 
 
 void dark_prior_validation() {
-    const std::string dir_name("./images/output/prior/origin/");
-    const std::string save_dir("./images/output/prior/");
+    const std::string dir_name("./images/output/dehaze/prior/origin/");
+    const std::string save_dir("./images/output/dehaze/prior/");
     std::vector<std::string> images_list({
         "a4988-kme_0248.png",
         "a4928-Duggan_090127_4793.png",
@@ -145,7 +145,7 @@ void dark_prior_validation() {
 
 
 void dark_channel_prior_demo_1() {
-    const std::string image_path("../../images/dehaze/he_2019/girls.jpg");
+    const std::string image_path("./images/input/girls.jpg");
     const auto haze_image = cv::imread(image_path);
     if(haze_image.empty()) {
         std::cout << "读取图像 " << image_path << " 失败 !\n";
@@ -164,7 +164,7 @@ void dark_channel_prior_demo_1() {
 
 
 void dark_channel_prior_demo_2() {
-    const std::string image_path("../images/dehaze/he_2019/tiananmen1.bmp");
+    const std::string image_path("./images/input/tiananmen1.bmp");
     const auto haze_image = cv::imread(image_path);
     if(haze_image.empty()) {
         std::cout << "读取图像 " << image_path << " 失败 !\n";
@@ -184,7 +184,7 @@ void dark_channel_prior_demo_2() {
         cv_stack({dehazed_result["T"], dehazed_result["T"], dehazed_result["T"]}),
         dehazed_result["dehazed"]});
     cv_show(comparison_results);
-    cv_write(comparison_results, "./images/output/t_1_without_guide.png");
+    cv_write(comparison_results, "./images/output/dehaze/t_1_without_guide.png");
 
     // ---------- 【2】三通道一个透射图 T, 经过 guided filter 精修
     run([&](){
@@ -197,7 +197,7 @@ void dark_channel_prior_demo_2() {
         cv_stack({dehazed_result["T_guided"], dehazed_result["T_guided"], dehazed_result["T_guided"]}),
         dehazed_result["dehazed"]});
     cv_show(comparison_results);
-    cv_write(comparison_results, "./images/output/t_1_with_guide.png");
+    cv_write(comparison_results, "./images/output/dehaze/t_1_with_guide.png");
 
     // ---------- 【3】三通道分开计算透射图 T, 不经过 guided filter 精修
     run([&](){
@@ -216,7 +216,7 @@ void dark_channel_prior_demo_2() {
         true
     );
     cv_show(comparison_results);
-    cv_write(comparison_results, "./images/output/t_3_without_guide.png");
+    cv_write(comparison_results, "./images/output/dehaze/t_3_without_guide.png");
 
     // ---------- 【4】三通道分开计算透射图 T, 经过 guided filter 精修
     run([&](){
@@ -240,12 +240,12 @@ void dark_channel_prior_demo_2() {
         true
     );
     cv_show(comparison_results);
-    cv_write(comparison_results, "./images/output/t_3_with_guide.png");
+    cv_write(comparison_results, "./images/output/dehaze/t_3_with_guide.png");
 }
 
 
 void dark_channel_prior_demo_3() {
-    const std::string image_path("../images/dehaze/he_2019/gugong.bmp");
+    const std::string image_path("./images/input/gugong.bmp");
     const auto haze_image = cv::imread(image_path);
     if(haze_image.empty()) {
         std::cout << "读取图像 " << image_path << " 失败 !\n";
@@ -287,7 +287,7 @@ void dark_channel_prior_demo_3() {
         }),
     }, true);
     cv_show(comparison_results);
-    cv_write(comparison_results, "./images/output/t_1_with_guide_hotmap.png");
+    cv_write(comparison_results, "./images/output/dehaze/t_1_with_guide_hotmap.png");
 
     // ---------- 【4】跑一个粗糙的结果
     std::map<const std::string, cv::Mat> dehazed_result_2;
@@ -300,7 +300,7 @@ void dark_channel_prior_demo_3() {
     for(int i = 0;i < TOTAL; ++i) blank.data[i] = 255;
     comparison_results = cv_concat({haze_image, blank, dehazed_result_2["dehazed"], blank, dehazed_result["dehazed"]}, true);
     cv_show(comparison_results);
-    cv_write(comparison_results, "./images/output/t_1_before_and_after_guide_fiilter.png");
+    cv_write(comparison_results, "./images/output/dehaze/t_1_before_and_after_guide_fiilter.png");
 }
 
 
@@ -308,7 +308,7 @@ void dark_channel_prior_demo_3() {
 
 
 void dark_channel_prior_demo_4() {
-    const std::string image_path("../images/dehaze/he_2019/canon3.bmp");
+    const std::string image_path("./images/input/canon3.bmp");
     const auto haze_image = cv::imread(image_path);
     if(haze_image.empty()) {
         std::cout << "读取图像 " << image_path << " 失败 !\n";
@@ -350,14 +350,14 @@ void dark_channel_prior_demo_4() {
         }),
     }, true);
     cv_show(comparison_results);
-    // cv_write(comparison_results, "./images/output/t_1_A_points.png");
+    // cv_write(comparison_results, "./images/output/dehaze/t_1_A_points.png");
 }
 
 
 
 
 void dark_channel_prior_demo_5() {
-    const std::string image_path("../images/dehaze/he_2019/canyon2.bmp");
+    const std::string image_path("./images/input/canyon2.bmp");
     const auto haze_image = cv::imread(image_path);
     if(haze_image.empty()) {
         std::cout << "读取图像 " << image_path << " 失败 !\n";
@@ -376,14 +376,14 @@ void dark_channel_prior_demo_5() {
             cv_stack({dehazed_result["T_guided"], dehazed_result["T_guided"], dehazed_result["T_guided"]}),
             dehazed_result["dehazed"]});
         cv_show(comparison_results);
-        cv_write(comparison_results, "./images/output/t_1_with_radius_grows" + std::to_string(radius) + ".png");
+        cv_write(comparison_results, "./images/output/dehaze/t_1_with_radius_grows" + std::to_string(radius) + ".png");
     }
 }
 
 
 
 void dark_channel_prior_demo_6() {
-    const std::string image_path("../images/dehaze/he_2019/tiananmen1.bmp");
+    const std::string image_path("./images/input/tiananmen1.bmp");
     const auto haze_image = cv::imread(image_path);
     if(haze_image.empty()) {
         std::cout << "读取图像 " << image_path << " 失败 !\n";
@@ -403,5 +403,5 @@ void dark_channel_prior_demo_6() {
 //        cv_stack({dehazed_result["T_guided"], dehazed_result["T_guided"], dehazed_result["T_guided"]}),
         dehazed_result["dehazed"]});
     cv_show(comparison_results);
-    cv_write(comparison_results, "./images/output/t_1_with_guide.png");
+    cv_write(comparison_results, "./images/output/dehaze/t_1_with_guide.png");
 }
