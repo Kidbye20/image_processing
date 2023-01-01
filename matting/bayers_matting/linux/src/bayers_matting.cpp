@@ -439,7 +439,7 @@ int main() {
         alpha = bayers_matting(observation, trimap, 12);
     }, "bayers_matting  ");
 
-    cv_write(alpha, "./images/output/alpha_4_cliped.png");
+    cv_write(alpha, "./images/output/alpha_4.png");
 
     /*
     if(true) {
@@ -456,7 +456,7 @@ int main() {
     }
     */
 
-    if(true) {
+    if(false) {
         // 和其他图像组合在一起
         cv::Mat background = cv::imread("./images/input/a0161-_DSC0022.png");
         assert(not background.empty() and "背景图像不能为空 !");

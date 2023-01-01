@@ -4,7 +4,7 @@ project(bayers_matting)
 # 添加编译选项
 SET(CMAKE_CXX_FLAGS "-std=c++11")
 
-set(PROJECT_SOURCE_DIR ./)
+set(PROJECT_SOURCE_DIR ../)
 
 # 生成文件的输出目录
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
@@ -16,7 +16,7 @@ include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/include/)
 add_executable(bayers_matting src/bayers_matting.cpp)
 
 # 设置  opencv
-set(OpenCV_DIR "D:/environments/C++/OpenCV/opencv-4.5.2/build_no_qt/install")
+set(OpenCV_DIR "D:/environments/C++/OpenCV/opencv-4.5.2/build_TDM-GCC/install")
 # 寻找 opencv 的库
 find_package(OpenCV REQUIRED)
 # 添加 opencv 的头文件
