@@ -23,3 +23,7 @@ CMakeFiles
 CMakeFiles/
 cmake_install.cmake
 */cmake_install.cmake
+build/*
+build
+.xmake/*
+.xmake
