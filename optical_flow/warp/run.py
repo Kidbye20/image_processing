@@ -43,8 +43,12 @@ cv_write(add_to_save("backward_flow_visualize.png"), backward_flow_visualize)
 cv_show(numpy.concatenate([forward_flow_visualize, backward_flow_visualize], axis=0))
 
 
-# 加载我自己的动态库
-lib = ctypes.cdll.LoadLibrary("./crane_warp.so")
+# 编译 C++ 代码用于 forward warp
+warp_lib_path = "./crane_warp.so"
+os.system("g++ -fPIC -shared -O2 ./crane_warp.cpp -o {}".format(warp_lib_path))
+
+# 加载动态库
+warp_lib = ctypes.cdll.LoadLibrary(warp_lib_path)
 
 
 def backward_warp(x, flow):
