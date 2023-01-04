@@ -30,7 +30,7 @@ make_show = True if (height * width < 1024 * 768) else False
 
 
 # 获取 image1 → image2 的光流
-use_flow_cache      = True
+use_flow_cache      = False
 forward_flow_cache  = "./images/real/forward_flow.npy"
 backward_flow_cache = "./images/real/backward_flow.npy"
 if (use_flow_cache):
