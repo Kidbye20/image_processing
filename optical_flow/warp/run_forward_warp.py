@@ -95,8 +95,8 @@ else:
 		forward_flow  = forward_flow[h_pad: h_pad + height, w_pad: w_pad + width].copy()
 		backward_flow = backward_flow[h_pad: h_pad + height, w_pad: w_pad + width].copy()
 	# 缓存下光流结果
-	numpy.save(forward_flow_cache, forward_flow)
-	numpy.save(backward_flow_cache, backward_flow)
+	# numpy.save(forward_flow_cache, forward_flow)
+	# numpy.save(backward_flow_cache, backward_flow)
 	# 清下内存
 	del infer_task, image1_tensor, image2_tensor
 
