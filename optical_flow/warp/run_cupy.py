@@ -18,16 +18,37 @@ def cv_show(image, message="crane"):
 cv_write = lambda x, y: cv2.imwrite(x, y, [cv2.IMWRITE_PNG_COMPRESSION, 0])
 
 
-# 先读取图像
-frame_1 = cv2.imread("./frame_0016.png")
-frame_2 = cv2.imread("./frame_0017.png")
-height, width, channel = frame_1.shape
 
-# 读取前后光流
-forward_flow  = numpy.load("./forward_flow.npy")
-backward_flow = numpy.load("./backward_flow.npy")
-forward_flow  = forward_flow[:height, :width].copy()
-backward_flow = backward_flow[:height, :width].copy()
+save_dir = "./temp/cupy"
+os.makedirs(save_dir, exist_ok=True)
+
+
+# 先读取图像
+image1 = cv2.imread("./images/sintel/frame_0016.png")
+image2 = cv2.imread("./images/sintel/frame_0017.png")
+height, width, channel = image1.shape
+make_show              = True if (height * width < 1024 * 768) else False
+
+# 获取 image1 → image2 的光流
+use_flow_cache      = True
+save_flow_cache     = True
+forward_flow_cache  = "./images/sintel/forward_flow.npy"
+backward_flow_cache = "./images/sintel/backward_flow.npy"
+if (use_flow_cache):
+	forward_flow    = numpy.load(forward_flow_cache)
+	backward_flow   = numpy.load(backward_flow_cache)
+else:
+	forward_flow, backward_flow = flow_viz.compute_optical_flow(image1, image2)
+
+# 如果确认缓存光流, 而且大小不是很大, 缓存之
+if (save_flow_cache and make_show):
+	numpy.save(forward_flow_cache,  forward_flow)
+	numpy.save(backward_flow_cache, backward_flow)
+
+# 可视化光流
+forward_flow_visualize  = flow_viz.flow_to_image(forward_flow)[:, :, ::-1] # [:, :, ::-1] 是为了 opencv 显示 BGR 序
+backward_flow_visualize = flow_viz.flow_to_image(backward_flow)[:, :, ::-1]
+cv_show(numpy.concatenate([forward_flow_visualize, backward_flow_visualize], axis=0))
 
 
 
@@ -127,7 +148,7 @@ extern "C" {
 			int target_pos = __x * width + __y;
 			float intensity = abs(u) + abs(v);
 
-			// 锁住
+			// 锁住(这里有 bug, linux 下正常, windows 下死锁)
 			while (atomicCAS(lock + target_pos, 0, 1) != 0);
 
 			if (intensity > flow_intensity[target_pos]) {
@@ -154,18 +175,18 @@ backward_warp_kernel = cuda_module.get_function("backward_warp_kernel")
 
 # 使用 1to2 的光流 forward flow, 将第二帧 warp 到第一帧的位置
 # 首先把输入数据传送到 GPU
-frame_2_cuda      = cupy.asarray(frame_2)
+image2_cuda      = cupy.asarray(image2)
 forward_flow_cuda = cupy.asarray(forward_flow)
 
 # 准备一个结果
-backward_warp_2to1_cuda = cupy.zeros(frame_2.shape, dtype="uint8")
+backward_warp_2to1_cuda = cupy.zeros(image2.shape, dtype="uint8")
 
 # 执行 kernel
 CUDA_CEIL = lambda x, y: int((x + y - 1) / y)
 backward_warp_kernel(
 	(CUDA_CEIL(width, 32), CUDA_CEIL(height, 32)),
 	(32, 32),
-	(backward_warp_2to1_cuda, frame_2_cuda, forward_flow_cuda, height, width, channel)
+	(backward_warp_2to1_cuda, image2_cuda, forward_flow_cuda, height, width, channel)
 )
 
 # 把数据从 GPU 取到 CPU
@@ -173,16 +194,17 @@ backward_warp_2to1 = cupy.asnumpy(backward_warp_2to1_cuda)
 
 
 # 同理可以得到 1to2 的 backward warp 结果(使用 backward flow)
-frame_1_cuda            = cupy.asarray(frame_1)
+image1_cuda            = cupy.asarray(image1)
 backward_flow_cuda      = cupy.asarray(backward_flow)
-backward_warp_1to2_cuda = cupy.zeros(frame_2.shape, dtype="uint8")
+backward_warp_1to2_cuda = cupy.zeros(image2.shape, dtype="uint8")
 backward_warp_kernel(
 	(CUDA_CEIL(width, 32), CUDA_CEIL(height, 32)),
 	(32, 32),
-	(backward_warp_1to2_cuda, frame_1_cuda, backward_flow_cuda, height, width, channel)
+	(backward_warp_1to2_cuda, image1_cuda, backward_flow_cuda, height, width, channel)
 )
 backward_warp_1to2 = cupy.asnumpy(backward_warp_1to2_cuda)
-# cv_show(backward_warp_1to2)
+cv2.imwrite(os.path.join(save_dir, "forward_warp_1to2.png"), backward_warp_1to2)
+cv_show(backward_warp_1to2)
 
 
 
@@ -194,15 +216,16 @@ backward_warp_1to2 = cupy.asnumpy(backward_warp_1to2_cuda)
 
 flow_intensity         = cupy.zeros((height, width), dtype="float32")
 flow_lock         	   = cupy.zeros((height, width), dtype='uint32') # 注意原子操作不能是 uchar
-forward_warp_2to1_cuda = cupy.zeros(frame_1.shape, dtype="uint8")
+forward_warp_2to1_cuda = cupy.zeros(image1.shape, dtype="uint8")
 
+# 这一步在 windows 下会卡死??, bug 暂未解决
 forward_warp_kernel = cuda_module.get_function("forward_warp_kernel")
 forward_warp_kernel(
 	(CUDA_CEIL(width, 32), CUDA_CEIL(height, 32)),
 	(32, 32),
-	(forward_warp_2to1_cuda, frame_2_cuda, backward_flow_cuda, flow_intensity, flow_lock, height, width, channel)
+	(forward_warp_2to1_cuda, image2_cuda, backward_flow_cuda, flow_intensity, flow_lock, height, width, channel)
 )
 
 forward_warp_2to1 = cupy.asnumpy(forward_warp_2to1_cuda)
-# cv_show(forward_warp_2to1)
-cv2.imwrite("./temp.png", forward_warp_2to1)
+cv_show(forward_warp_2to1)
+cv2.imwrite(os.path.join(save_dir, "forward_warp_2to1.png"), forward_warp_2to1)
