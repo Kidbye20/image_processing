@@ -63,14 +63,15 @@ os.system("g++ -fPIC -shared -O2 ./crane_warp.cpp -o {}".format(warp_lib_path))
 warp_lib = ctypes.cdll.LoadLibrary(warp_lib_path)
 
 
-def backward_warp(x, flow):
+def backward_warp(x, flow, mode="nearest"):
 	h, w, c = x.shape
 	warped = numpy.zeros((h, w, c), dtype="uint8")
 	warp_lib.backward_warp_using_flow(
 		warped.ctypes.data_as(ctypes.c_char_p), 
 		x.ctypes.data_as(ctypes.c_char_p), 
 		flow.ctypes.data_as(ctypes.c_char_p), 
-		h, w, c
+		h, w, c,
+		mode.encode()
 	)
 	return warped
 

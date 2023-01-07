@@ -2,6 +2,7 @@
 #include <list>
 #include <cmath>
 #include <vector>
+#include <cstring>
 #include <iostream>
 #include <algorithm>
 
@@ -69,6 +70,12 @@ void fast_compute_occulusion_inplementation(
 
 
 
+template<typename T=int>
+inline T nearest_round(const float x, const float eps=0.5f) {
+	return T(x + eps);
+}
+
+
 
 template<typename type=unsigned char, const int dimension>
 void backward_warp_using_flow_inplementation(
@@ -77,7 +84,11 @@ void backward_warp_using_flow_inplementation(
 		float* flow,
 		int height, 
 		int width, 
-		int channel) {
+		int channel,
+		const char* mode) {
+	// 是否用双线性
+	bool use_bilinear = std::strcmp(mode, "bilinear") == 0;
+	bool use_nearest  = std::strcmp(mode, "nearest") == 0;
 	// 遍历每一个位置
 	for (int i = 0; i < height; ++i) {
 		float* flow_ptr = flow + i * width * dimension;
@@ -86,43 +97,54 @@ void backward_warp_using_flow_inplementation(
 			float x = i + flow_ptr[2 * j + 1];
 			float y = j + flow_ptr[2 * j];
 			// 截断
-			x = clip(x, 0.f, (height - 1) * 1.f);
-			y = clip(y, 0.f, (width - 1)  * 1.f);
-			// 上下界限
-			const int x_low  = std::floor(x);
-			const int x_high = std::min(x_low + 1, height - 1);
-			const int y_low  = std::floor(y);
-			const int y_high = std::min(y_low + 1, width - 1);
-			// 算加权系数
-			const float x_high_weight = x - x_low;
-			const float x_low_weight  = 1.f - x_high_weight;
-			const float y_high_weight = y - y_low;
-			const float y_low_weight  = 1.f - y_high_weight;
-			// 开始多通道加权
-			for (int c = 0; c < channel; ++c) {
-				// 找到四个原图四个点的值
-				type Q1 = source[(x_low * width + y_low) * channel + c];
-				type Q2 = source[(x_low * width + y_high) * channel + c];
-				type Q3 = source[(x_high * width + y_low) * channel + c];
-				type Q4 = source[(x_high * width + y_high) * channel + c];
-				// 左右加权
-				float up_value   = y_low_weight * Q1 + y_high_weight * Q2;
-				float down_value = y_low_weight * Q3 + y_high_weight * Q4;
-				// 上下加权
-				float value = x_low_weight * up_value + x_high_weight * down_value;
-				result[(i * width + j) * channel + c] = 
-					clip<type, type, type>(value, 0, 255);
+			x = clip(x, 0.f, height - 1.00001f);
+			y = clip(y, 0.f, width  - 1.00001f);
+			// 如果使用双线性
+			if (use_bilinear) {
+				// 上下界限
+				const int x_low  = std::floor(x);
+				const int x_high = std::min(x_low + 1, height - 1);
+				const int y_low  = std::floor(y);
+				const int y_high = std::min(y_low + 1, width - 1);
+				// 算加权系数
+				const float x_high_weight = x - x_low;
+				const float x_low_weight  = 1.f - x_high_weight;
+				const float y_high_weight = y - y_low;
+				const float y_low_weight  = 1.f - y_high_weight;
+				// 开始多通道加权
+				for (int c = 0; c < channel; ++c) {
+					// 找到四个原图四个点的值
+					type Q1 = source[(x_low  * width + y_low)  * channel + c];
+					type Q2 = source[(x_low  * width + y_high) * channel + c];
+					type Q3 = source[(x_high * width + y_low)  * channel + c];
+					type Q4 = source[(x_high * width + y_high) * channel + c];
+					// 左右加权
+					float up_value   = y_low_weight * Q1 + y_high_weight * Q2;
+					float down_value = y_low_weight * Q3 + y_high_weight * Q4;
+					// 上下加权
+					float value = x_low_weight * up_value + x_high_weight * down_value;
+					result[(i * width + j) * channel + c] = 
+						clip<type, type, type>(value, 0, 255);
+				}
 			}
+			// 如果是最近邻插值
+			else if (use_nearest) {
+				// 找到 x, y 的最近 __x, __y
+				int __x = nearest_round(x);
+				int __y = nearest_round(y);
+				// 找到对应位置
+				type* src_ptr = source + (__x * width + __y) * channel;
+				type* res_ptr = result + (i   * width + j)   * channel;
+				// 做多通道的赋值
+				for (int c = 0; c < channel; ++c) {
+					res_ptr[c] = src_ptr[c];
+				}
+ 			}
 		}
 	}
 }
 
 
-
-template<typename T=int>
-inline T nearest_round(const float x, const float eps=0.5f) {
-	return T(x + eps);
-}
 
 
 template<typename T=float>
@@ -350,8 +372,9 @@ extern "C" {
 		float* flow,
 		int height, 
 		int width, 
-		int channel) {
-		backward_warp_using_flow_inplementation<unsigned char, 2>(result, source, flow, height, width, channel);
+		int channel,
+		const char* mode="bilinear") {
+		backward_warp_using_flow_inplementation<unsigned char, 2>(result, source, flow, height, width, channel, mode);
 	}
 
 	void forward_warp_using_flow(

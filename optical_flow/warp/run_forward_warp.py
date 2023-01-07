@@ -101,10 +101,10 @@ if (make_show): cv_show(forward_warp_1to2)
 
 # 尝试第一种 warp
 forward_warp_1to2_full = forward_warp(image1, forward_flow, mode="full")
-cv_write("./results/forward_warp_1to2_full.png", forward_warp_1to2)
+cv_write("./results/forward_warp_1to2_full.png", forward_warp_1to2_full)
 if (make_show): cv_show(forward_warp_1to2_full)
 
 # 尝试第二种 warp
 forward_warp_1to2_interp = forward_warp(image1, forward_flow, mode="interpolation")
-cv_write("./results/forward_warp_1to2_interp.png", forward_warp_1to2)
+cv_write("./results/forward_warp_1to2_interp.png", forward_warp_1to2_interp)
 if (make_show): cv_show(forward_warp_1to2_interp)
