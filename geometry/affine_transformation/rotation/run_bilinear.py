@@ -38,7 +38,7 @@ def get_rotation_matrix(theta, center=(0, 0), scale=1.0):
 	]).reshape((3, 3)).astype("float32")
 
 # 获取旋转角度 30° 的变换矩阵
-rotate_matrix = get_rotation_matrix(theta=30)
+rotate_matrix = get_rotation_matrix(theta=30, center=(int(height / 2), int(width / 2)))
 print(rotate_matrix)
 
 
@@ -72,33 +72,10 @@ def make_affine(x, H, mode="nearest"):
 	return result
 
 
-# 做一次最简单的以 (0, 0) 为中心的旋转
-rotate_result = make_affine(origin_image, rotate_matrix)
-cv_write("./rotate_result.png", rotate_result)
+# 求得旋转矩阵的逆矩阵
+rotate_matrix_inv = numpy.linalg.inv(rotate_matrix)
+
+# 可以使用双线性(其实, 如果用逆这种方式可以解出来, 最近邻这些都可以用)
+rotate_result = make_affine(origin_image, rotate_matrix_inv, mode="biliear")
+cv_write("./rotate_result_bilinear.png", rotate_result)
 cv_show(rotate_result)
-
-
-# 获取角度 30°, 以图像中心为中心的旋转矩阵
-rotate_matrix_2 = get_rotation_matrix(theta=30, center=(int(height / 2), int(width / 2)))
-print(rotate_matrix_2)
-# 再做一次旋转
-rotate_result_2 = make_affine(origin_image, rotate_matrix_2)
-cv_write("./rotate_result_2.png", rotate_result_2)
-cv_show(rotate_result_2)
-
-
-# 试一试放缩
-rotate_matrix_3 = get_rotation_matrix(
-	theta=30, 
-	center=(int(height / 2), int(width / 2)),
-	scale=0.5)
-print(rotate_matrix_3)
-# 再做一次旋转
-rotate_result_3 = make_affine(origin_image, rotate_matrix_3)
-cv_write("./rotate_result_3.png", rotate_result_3)
-cv_show(rotate_result_3)
-
-# 简述下两个平移项的数学意义
-# 可以看成两步, 先按照 (0, 0) 为中心的旋转, 可以看到图像的中心点也被旋转了
-# 如果是按照图像中心点为中心的旋转, 则图像中心的坐标是不变的, 所以要加上新旧坐标的插值
-# 即 (x, y) 减去 (xcosθ - ysinθ, xsinθ + ycosθ)

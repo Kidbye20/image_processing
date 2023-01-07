@@ -6,6 +6,16 @@
 
 
 
+
+template<typename src_type=float, typename res_type=int>
+res_type clip(const src_type x, const res_type low, const res_type high) {
+	if (x < low)       return low;
+	else if (x > high) return high;
+	else               return x;
+}
+
+
+
 template<typename src_type=unsigned char>
 void affine_transform_inplementation(
 		src_type* result,
@@ -100,7 +110,42 @@ void affine_transform_inplementation(
 			}
 		}
 	}
+	// 如果是双线性插值
+	else if (strcmp(mode, "biliear") == 0) {
+		// 生成每一个点
+		for (int i = 0; i < height; ++i) {
+			for (int j = 0; j < width; ++j) {
+				// 注意使用的是逆矩阵 (x, y) = H^-1 * [x, y, 1]
+				float x = H[0] * i + H[1] * j + H[2];
+				float y = H[3] * i + H[4] * j + H[5];
+				// 如果超出了图像范围, 找不到
+				constexpr float eps{0.00001f};
+				if ((x + eps > height - 1) or (x - eps < 0) or (y + eps > width - 1) or (y - eps < 0))
+					continue;
+				// 找到 (x, y) 的下界
+				int x_low  = std::floor(x);
+				int y_low  = std::floor(y);
+				// 计算 x, y 方向上的加权值
+				float x_high_weight = x - x_low;
+				float y_high_weight = y - y_low;
+				// 找到对应在 source 中的位置, 做双线性加权
+				src_type* Q1 = source + (x_low * width + y_low)  * channel;
+				src_type* Q2 = Q1 + channel;
+				src_type* Q3 = Q1 + width * channel;
+				src_type* Q4 = Q3 + channel;
+				// 找到被赋值的位置
+				src_type* res_ptr = result + (i * width + j) * channel;
+				// 多通道分别算
+				for (int c = 0; c < channel; ++c) {
+					float up   = (1.f - y_high_weight) * Q1[c] + y_high_weight * Q2[c];
+					float down = (1.f - y_high_weight) * Q3[c] + y_high_weight * Q4[c];
+					res_ptr[c] = (1.f - x_high_weight) * up + x_high_weight * down;
+				}
+			}
+		}
+	}
 }
+
 
 
 extern "C" {
