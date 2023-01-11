@@ -89,6 +89,8 @@ void backward_warp_using_flow_inplementation(
 	// 是否用双线性
 	bool use_bilinear = std::strcmp(mode, "bilinear") == 0;
 	bool use_nearest  = std::strcmp(mode, "nearest") == 0;
+	std::cout << std::boolalpha << "use_bilinear  :  " << use_bilinear << std::endl;
+	std::cout << std::boolalpha << "use_nearest   :  " << use_nearest << std::endl;
 	// 遍历每一个位置
 	for (int i = 0; i < height; ++i) {
 		float* flow_ptr = flow + i * width * dimension;
