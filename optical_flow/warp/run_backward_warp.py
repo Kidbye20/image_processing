@@ -21,8 +21,8 @@ cv_write = lambda x, y: cv2.imwrite(x, y) # , [cv2.IMWRITE_PNG_COMPRESSION, 0]
 
 
 # 读取两张图象
-image1 = cv2.imread("./images/real/IMG_20230104_185838.jpg")
-image2 = cv2.imread("./images/real/IMG_20230104_185907.jpg")
+image1 = cv2.imread("./images/real/IMG_20230118_182911.jpg")
+image2 = cv2.imread("./images/real/IMG_20230118_182922.jpg")
 # 获取图像的形状
 height, width, _ = image1.shape
 make_show        = True if (height * width < 1024 * 768) else False
@@ -53,7 +53,7 @@ if (make_show):
 	cv_show(forward_flow_visualize)
 	cv_show(backward_flow_visualize)
 
-cv_write("./results/backward_flow_real.png", backward_flow_visualize)
+cv_write("./results/forward_flow_real.png", forward_flow_visualize)
 
 # ==========> 以下尝试做 backward warp, 观察时差交界的地方是否有严重的形变
 
@@ -81,11 +81,11 @@ def backward_warp(x, flow, mode=""):
 	return warped
 
 # backward warp, 用 image1 -> image2 光流, 把 image2 转换到 image1 视角
-backward_warp_2to1 = backward_warp(image2, backward_flow, mode="bilinear")
+backward_warp_2to1 = backward_warp(image2, forward_flow, mode="bilinear")
 cv_write("./results/backward_warp_2to1_error.png", backward_warp_2to1)
 		
 
 
 # 试试最近邻
-backward_warp_2to1 = backward_warp(image2, backward_flow, mode="nearest")
+backward_warp_2to1 = backward_warp(image2, forward_flow, mode="nearest")
 cv_write("./results/backward_warp_2to1_error_nearest.png", backward_warp_2to1)
