@@ -65,11 +65,12 @@ def compute_optical_flow(image1, image2):
 
     # 如果做了放缩, 则需要对图像做放缩, 同时光流要乘以放缩倍率
     if (make_resize):
-        forward_flow  = cv2.resize(forward_flow, (width, height), cv2.INTER_LANCZOS4)
-        backward_flow = cv2.resize(backward_flow, (width, height), cv2.INTER_LANCZOS4)
-        # 倍率
+        print("光流上采样, 需要乘以倍率")
         h_ratio = float(height / forward_flow.shape[0])
         w_ratio = float(width  / forward_flow.shape[1])
+        forward_flow  = cv2.resize(forward_flow, (width, height))
+        backward_flow = cv2.resize(backward_flow, (width, height))
+        print("h_ratio  {}\nw_ratio  {}".format(h_ratio, w_ratio))
         forward_flow[:, :, 0]  *= w_ratio
         forward_flow[:, :, 1]  *= h_ratio
         backward_flow[:, :, 0] *= w_ratio

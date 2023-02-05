@@ -21,8 +21,8 @@ cv_write = lambda x, y: cv2.imwrite(x, y) # , [cv2.IMWRITE_PNG_COMPRESSION, 0]
 
 
 # 读取两张图象
-image1 = cv2.imread("./images/real/IMG_20230118_182911.jpg")
-image2 = cv2.imread("./images/real/IMG_20230118_182922.jpg")
+image1 = cv2.imread("./images/sintel/frame_0016.png")
+image2 = cv2.imread("./images/sintel/frame_0017.png")
 # 获取图像的形状
 height, width, _ = image1.shape
 make_show        = True if (height * width < 1024 * 768) else False
@@ -31,9 +31,9 @@ make_show        = True if (height * width < 1024 * 768) else False
 # 获取 image1 → image2 的光流
 use_flow_cache      = False
 save_flow_cache     = False
-forward_flow_cache  = "./images/real/forward_flow.npy"
-backward_flow_cache = "./images/real/backward_flow.npy"
-if (use_flow_cache):
+forward_flow_cache  = "./images/sintel/forward_flow.npy"
+backward_flow_cache = "./images/sintel/backward_flow.npy"
+if (use_flow_cache and os.path.exists(forward_flow_cache)):
 	forward_flow    = numpy.load(forward_flow_cache)
 	backward_flow   = numpy.load(backward_flow_cache)
 else:
