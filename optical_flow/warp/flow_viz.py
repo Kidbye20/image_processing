@@ -12,7 +12,7 @@ infer_task = None
 
 
 
-def compute_optical_flow(image1, image2):
+def compute_optical_flow(image1, image2, upsample_mode="bilinear"):
     height, width, _ = image1.shape
     assert image1.shape == image2.shape, "image1 和 image2 的形状不同"
     make_pad     = False
@@ -68,8 +68,17 @@ def compute_optical_flow(image1, image2):
         print("光流上采样, 需要乘以倍率")
         h_ratio = float(height / forward_flow.shape[0])
         w_ratio = float(width  / forward_flow.shape[1])
-        forward_flow  = cv2.resize(forward_flow, (width, height))
-        backward_flow = cv2.resize(backward_flow, (width, height))
+        if (upsample_mode == "bilinear"):
+            forward_flow  = cv2.resize(forward_flow, (width, height), cv2.INTER_LINEAR)
+            backward_flow = cv2.resize(backward_flow, (width, height), cv2.INTER_LINEAR)
+            print("采用 bilinear 插值")
+        elif (upsample_mode == "nearest"):
+            forward_flow  = cv2.resize(forward_flow, (width, height), cv2.INTER_NEAREST)
+            backward_flow = cv2.resize(backward_flow, (width, height), cv2.INTER_NEAREST)
+            print("采用 nearest 插值")
+            # 竟然无效??????
+            print(numpy.mean(cv2.resize(forward_flow, (width, height), cv2.INTER_NEAREST) - cv2.resize(forward_flow, (width, height), cv2.INTER_LINEAR)))
+            print(numpy.mean(cv2.resize(backward_flow, (width, height), cv2.INTER_NEAREST) - cv2.resize(backward_flow, (width, height), cv2.INTER_LINEAR)))
         print("h_ratio  {}\nw_ratio  {}".format(h_ratio, w_ratio))
         forward_flow[:, :, 0]  *= w_ratio
         forward_flow[:, :, 1]  *= h_ratio
@@ -79,7 +88,7 @@ def compute_optical_flow(image1, image2):
         forward_flow  = forward_flow[h_pad: h_pad + height, w_pad: w_pad + width].copy()
         backward_flow = backward_flow[h_pad: h_pad + height, w_pad: w_pad + width].copy()
     # 清下内存
-    del infer_task, image1_tensor, image2_tensor
+    del image1_tensor, image2_tensor
 
     # 返回
     return forward_flow, backward_flow

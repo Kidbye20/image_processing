@@ -89,3 +89,25 @@ def backward_warp(x, flow, mode="bilinear"):
 
 backward_warp_1to2_highres = backward_warp(image1, backward_flow)
 cv_write(add_to_save("backward_warp_1to2_highres.png"), backward_warp_1to2_highres)
+
+
+##########################################################################################
+#                       使用最近邻做插值看看效果
+##########################################################################################
+
+forward_flow, backward_flow = flow_viz.compute_optical_flow(image1, image2, upsample_mode="nearest")
+
+# 可视化光流
+forward_flow_visualize  = flow_viz.flow_to_image(forward_flow)[:, :, ::-1] # [:, :, ::-1] 是为了 opencv 显示 BGR 序
+backward_flow_visualize = flow_viz.flow_to_image(backward_flow)[:, :, ::-1]
+cv_write(add_to_save("forward_flow_visualize_highres_nearest.png"),  forward_flow_visualize)
+cv_write(add_to_save("backward_flow_visualize_highres_nearest.png"), backward_flow_visualize)
+
+
+# 做 warp
+forward_warp_1to2_highres = forward_warp(image1, forward_flow)
+cv_write(add_to_save("forward_warp_1to2_highres_nearest.png"), forward_warp_1to2_highres)
+
+
+backward_warp_1to2_highres = backward_warp(image1, backward_flow)
+cv_write(add_to_save("backward_warp_1to2_highres_nearest.png"), backward_warp_1to2_highres)
