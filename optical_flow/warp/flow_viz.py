@@ -5,24 +5,22 @@ import numpy
 
 
 
-
-
 # 设置一个全局变量, 不需要重复加载 onnx 文件
 infer_task = None
 
 
 
-def compute_optical_flow(image1, image2, upsample_mode="bilinear"):
+def compute_optical_flow(image1, image2, do_upsample=True, return_img=False):
     height, width, _ = image1.shape
     assert image1.shape == image2.shape, "image1 和 image2 的形状不同"
     make_pad     = False
     # 如果是高分辨率的图像
     if (height * width > 1024 * 768):
-        make_resize  = True
-        height_small = 448
-        width_small  = 600
+        make_resize   = True
+        lowres_height = 768
+        lowres_width  = 1024
     else:
-        make_resize  = False
+        make_resize   = False
         # GMFlowNet 只支持边长为 8 倍数的图像, 所以需要做 padding
         if (int(height / 8) == 0 and int(width / 8) == 0): 
             pass
@@ -31,23 +29,26 @@ def compute_optical_flow(image1, image2, upsample_mode="bilinear"):
             make_pad = True
             height_2, width_2 = 8 * (int(height / 8) + 1), 8 * (int(width / 8) + 1)
             h_pad, w_pad = int((height_2 - height) / 2), int((width_2 - width) / 2)
-            # print("h_pad  :  {}\nw_pad  :  {}\n".format(h_pad, w_pad))
+
+    # 做缩放和
+    if (make_resize):
+        lowres_image1 = cv2.resize(image1, (lowres_width, lowres_height), cv2.INTER_LANCZOS4)
+        lowres_image2 = cv2.resize(image2, (lowres_width, lowres_height), cv2.INTER_LANCZOS4)
+    elif (make_pad):
+        lowres_image1 = numpy.pad(image1, [(h_pad, h_pad), (w_pad, w_pad), (0, 0)], mode="reflect")
+        lowres_image2 = numpy.pad(image2, [(h_pad, h_pad), (w_pad, w_pad), (0, 0)], mode="reflect")
 
     # 设置转换函数, 从 numpy、uint8、BGR序、HWC → numpy、float32、RGB序、1CHW
     def convert_to_tensor(x):
         x_tensor = cv2.cvtColor(x, cv2.COLOR_BGR2RGB)
-        if (make_resize):
-            x_tensor = cv2.resize(x_tensor, (width_small, height_small), cv2.INTER_LANCZOS4)
-        elif (make_pad):
-            x_tensor = numpy.pad(x_tensor, [(h_pad, h_pad), (w_pad, w_pad), (0, 0)], mode="reflect")
         x_tensor = x_tensor.transpose(2, 0, 1)
         x_tensor = numpy.ascontiguousarray(x_tensor)
         x_tensor = numpy.expand_dims(x_tensor, axis=0)
         return x_tensor.astype("float32")
 
     # 把原始图像转换成 B x C x H x W 的内存格式
-    image1_tensor = convert_to_tensor(image1)
-    image2_tensor = convert_to_tensor(image2)
+    image1_tensor = convert_to_tensor(lowres_image1)
+    image2_tensor = convert_to_tensor(lowres_image2)
     # print("image1  :  {}\nimage2  :  {}\n".format(image1_tensor.shape, image2_tensor.shape))
 
     # 加载光流的 ONNX 模型
@@ -55,8 +56,7 @@ def compute_optical_flow(image1, image2, upsample_mode="bilinear"):
     if (infer_task is None):
         import onnxruntime
         onnx_file  = "GMFlowNet.onnx"
-        infer_task = onnxruntime.InferenceSession(onnx_file, 
-            providers=['CPUExecutionProvider'])
+        infer_task = onnxruntime.InferenceSession(onnx_file, providers=['CPUExecutionProvider'])
     # 开始推理
     [forward_flow]  = infer_task.run(["flow"], {"image1": image1_tensor, "image2": image2_tensor})
     [backward_flow] = infer_task.run(["flow"], {"image1": image2_tensor, "image2": image1_tensor})
@@ -64,21 +64,12 @@ def compute_optical_flow(image1, image2, upsample_mode="bilinear"):
     backward_flow   = numpy.ascontiguousarray(backward_flow[0].transpose(1, 2, 0))
 
     # 如果做了放缩, 则需要对图像做放缩, 同时光流要乘以放缩倍率
-    if (make_resize):
+    if (make_resize and do_upsample):
         print("光流上采样, 需要乘以倍率")
         h_ratio = float(height / forward_flow.shape[0])
         w_ratio = float(width  / forward_flow.shape[1])
-        if (upsample_mode == "bilinear"):
-            forward_flow  = cv2.resize(forward_flow, (width, height), cv2.INTER_LINEAR)
-            backward_flow = cv2.resize(backward_flow, (width, height), cv2.INTER_LINEAR)
-            print("采用 bilinear 插值")
-        elif (upsample_mode == "nearest"):
-            forward_flow  = cv2.resize(forward_flow, (width, height), cv2.INTER_NEAREST)
-            backward_flow = cv2.resize(backward_flow, (width, height), cv2.INTER_NEAREST)
-            print("采用 nearest 插值")
-            # 竟然无效??????
-            print(numpy.mean(cv2.resize(forward_flow, (width, height), cv2.INTER_NEAREST) - cv2.resize(forward_flow, (width, height), cv2.INTER_LINEAR)))
-            print(numpy.mean(cv2.resize(backward_flow, (width, height), cv2.INTER_NEAREST) - cv2.resize(backward_flow, (width, height), cv2.INTER_LINEAR)))
+        forward_flow  = cv2.resize(forward_flow, (width, height), cv2.INTER_LINEAR)
+        backward_flow = cv2.resize(backward_flow, (width, height), cv2.INTER_LINEAR)
         print("h_ratio  {}\nw_ratio  {}".format(h_ratio, w_ratio))
         forward_flow[:, :, 0]  *= w_ratio
         forward_flow[:, :, 1]  *= h_ratio
@@ -91,7 +82,7 @@ def compute_optical_flow(image1, image2, upsample_mode="bilinear"):
     del image1_tensor, image2_tensor
 
     # 返回
-    return forward_flow, backward_flow
+    return (forward_flow, backward_flow) if (not return_img) else (forward_flow, backward_flow, lowres_image1, lowres_image2)
 
 
 
