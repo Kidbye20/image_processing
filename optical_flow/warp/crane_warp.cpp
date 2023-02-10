@@ -17,59 +17,6 @@ inline T clip(const T x, const A lhs, const B rhs) {
 
 
 
-void fast_compute_occulusion_inplementation(
-		unsigned char* occulusion,
-		float* forward_flow, 
-		float* backward_flow,
-		int height, 
-		int width,
-		int dimension,
-		float dis_threshold) {
-	// 遍历每一个点
-	for (int i = 0; i < height; ++i) {
-		float* forward_ptr = forward_flow + i * width * dimension;
-		unsigned char* occulusion_ptr = occulusion + i * width;
-		for (int j = 0; j < width; ++j) {
-			// 获取当前点 (i, j) 经过位移 (u, v), 移动到 (x, y)
-			float x = clip(i + forward_ptr[2 * j + 1], 0.f, (height - 1) * 1.f);
-			float y = clip(j + forward_ptr[2 * j],     0.f, (width  - 1) * 1.f);
-			// 得到上下界限
-			int x_low  = std::floor(x);
-			int x_high = std::min(x_low + 1, height - 1);
-			int y_low  = std::floor(y);
-			int y_high = std::min(y_low + 1, width - 1);
-			// 得到加权系数
-			float x_high_weight = x - x_low;
-			float x_low_weight  = 1.f - x_high_weight;
-			float y_high_weight = y - y_low;
-			float y_low_weight  = 1.f - y_high_weight;
-			// 求解 (x, y) 处的反向光流, 插值得到
-			float Q1 = backward_flow[(x_low * width + y_low) * dimension];
-			float Q2 = backward_flow[(x_low * width + y_high) * dimension];
-			float Q3 = backward_flow[(x_high * width + y_low) * dimension];
-			float Q4 = backward_flow[(x_high * width + y_high) * dimension];
-			float up_value   = y_low_weight * Q1 + y_high_weight * Q2;
-			float down_value = y_low_weight * Q3 + y_high_weight * Q4;
-			float v  = x_low_weight * up_value + x_high_weight * down_value;
-			if (std::abs(y + v - j) > dis_threshold) {
-				occulusion_ptr[j] = 255;
-				continue;
-			}
-			Q1 = backward_flow[(x_low * width + y_low) * dimension + 1];
-			Q2 = backward_flow[(x_low * width + y_high) * dimension + 1];
-			Q3 = backward_flow[(x_high * width + y_low) * dimension + 1];
-			Q4 = backward_flow[(x_high * width + y_high) * dimension + 1];
-			up_value   = y_low_weight * Q1 + y_high_weight * Q2;
-			down_value = y_low_weight * Q3 + y_high_weight * Q4;
-			float u  = x_low_weight * up_value + x_high_weight * down_value;
-			if (std::abs(x + u - i) > dis_threshold)
-				occulusion_ptr[j] = 255;
-		}
-	}
-}
-
-
-
 template<typename T=int>
 inline T nearest_round(const float x, const float eps=0.5f) {
 	return T(x + eps);
@@ -366,6 +313,122 @@ void interp_forward_warp_using_flow_inplementation(
 
 
 
+
+
+
+
+void fast_compute_occulusion_inplementation(
+		unsigned char* occulusion,
+		float* forward_flow, 
+		float* backward_flow,
+		int height, 
+		int width,
+		int dimension,
+		float dis_threshold) {
+	// 遍历每一个点
+	for (int i = 0; i < height; ++i) {
+		float* forward_ptr = forward_flow + i * width * dimension;
+		unsigned char* occulusion_ptr = occulusion + i * width;
+		for (int j = 0; j < width; ++j) {
+			// 获取当前点 (i, j) 经过位移 (u, v), 移动到 (x, y)
+			float x = clip(i + forward_ptr[2 * j + 1], 0.f, (height - 1) * 1.f);
+			float y = clip(j + forward_ptr[2 * j],     0.f, (width  - 1) * 1.f);
+			// 得到上下界限
+			int x_low  = std::floor(x);
+			int x_high = std::min(x_low + 1, height - 1);
+			int y_low  = std::floor(y);
+			int y_high = std::min(y_low + 1, width - 1);
+			// 得到加权系数
+			float x_high_weight = x - x_low;
+			float x_low_weight  = 1.f - x_high_weight;
+			float y_high_weight = y - y_low;
+			float y_low_weight  = 1.f - y_high_weight;
+			// 求解 (x, y) 处的反向光流, 插值得到
+			float Q1 = backward_flow[(x_low * width + y_low) * dimension];
+			float Q2 = backward_flow[(x_low * width + y_high) * dimension];
+			float Q3 = backward_flow[(x_high * width + y_low) * dimension];
+			float Q4 = backward_flow[(x_high * width + y_high) * dimension];
+			float up_value   = y_low_weight * Q1 + y_high_weight * Q2;
+			float down_value = y_low_weight * Q3 + y_high_weight * Q4;
+			float v  = x_low_weight * up_value + x_high_weight * down_value;
+			if (std::abs(y + v - j) > dis_threshold) {
+				occulusion_ptr[j] = 255;
+				continue;
+			}
+			Q1 = backward_flow[(x_low * width + y_low) * dimension + 1];
+			Q2 = backward_flow[(x_low * width + y_high) * dimension + 1];
+			Q3 = backward_flow[(x_high * width + y_low) * dimension + 1];
+			Q4 = backward_flow[(x_high * width + y_high) * dimension + 1];
+			up_value   = y_low_weight * Q1 + y_high_weight * Q2;
+			down_value = y_low_weight * Q3 + y_high_weight * Q4;
+			float u  = x_low_weight * up_value + x_high_weight * down_value;
+			if (std::abs(x + u - i) > dis_threshold)
+				occulusion_ptr[j] = 255;
+		}
+	}
+}
+
+
+
+
+
+// 对 mask 做一个 backward warp
+void backward_warp_for_mask_inplementation(
+		unsigned char* occulussion,
+		unsigned char* mask,
+		float* flow,
+		int height,
+		int width) {
+	// 遍历每一个光流
+	for (int i = 0; i < height; ++i) {
+		for (int j = 0; j < width; ++j) {
+			// 当前点的光流
+			float* flow_start = flow + (i * width + j) * 2;
+			float u = flow_start[1];
+			float v = flow_start[0];
+			// 当前点, 要去 mask 的 i + u, j + v 的地方去插值
+			float x = i + u;
+			float y = j + v;
+			// 越界的不做处理
+			if (x < 0.0001f or x > height - 0.0001f or y < 0.0001f or y > width - 0.0001f)
+				continue;
+			// 剩下的做插值, 但是双线性不管怎么插值, 都是等于 1, 没法算遮挡
+			// 上面 continue 的部分, 倒是可以算出哪些超出图像范围了
+		}
+	}
+}
+
+
+
+// 对 mask 做一次 forward warp
+void forward_warp_for_mask_inplementation(
+		unsigned char* mask,
+		float* flow,
+		int height,
+		int width) {
+	// 遍历每个光流
+	for (int i = 0; i < height; ++i) {
+		for (int j = 0; j < width; ++j) {
+			// 得到 (i, j) 的光流
+			float* start = flow + (i * width + j) * 2;
+			float  u     = start[1];
+			float  v     = start[0];
+			// 得到新位置
+			float  x     = i + u;
+			float  y     = j + v;
+			// 判断是否越界
+			if (x < 0.0001f or x > height - 1.0001f or y < 0.0001f or y > width - 1.0001f)
+				continue;
+			// 找到最近邻
+			int  __x     = int(x + 0.49999f);
+			int  __y     = int(y + 0.49999f);
+			// (__x, __y) 的地方赋值为 0, 表示这里有像素来过; 抵达不了的像素, 则认为是遮挡, 保持 255
+			mask[__x * width + __y] = 0;
+		}
+	}
+}
+
+
 // 编程命名接口
 extern "C" {
 	void backward_warp_using_flow(
@@ -390,7 +453,6 @@ extern "C" {
 	}
 
 
-
 	void full_forward_warp_using_flow(
 		unsigned char* result, 
 		unsigned char* source,
@@ -401,7 +463,6 @@ extern "C" {
 		int radius) {
 		full_forward_warp_using_flow_inplementation(result, source, flow, height, width, channel, radius);
 	}
-
 
 
 	void interp_forward_warp_using_flow(
@@ -416,7 +477,6 @@ extern "C" {
 	}
 
 
-
 	void fast_compute_occulusion(
 		unsigned char* occulusion,
 		float* forward_flow, 
@@ -426,5 +486,23 @@ extern "C" {
 		int dimension,
 		float dis_threshold) {
 		fast_compute_occulusion_inplementation(occulusion, forward_flow, backward_flow, height, width, dimension, dis_threshold);
+	}
+
+
+	void backward_warp_for_mask(
+		unsigned char* occulussion,
+		unsigned char* mask,
+		float* flow,
+		int height,
+		int width) {
+		backward_warp_for_mask_inplementation(occulussion, mask, flow, height, width);
+	}
+
+	void forward_warp_for_mask(
+		unsigned char* mask,
+		float* flow,
+		int height,
+		int width) {
+		forward_warp_for_mask_inplementation(mask, flow, height, width);
 	}
 }

@@ -122,8 +122,8 @@ add_to_save("test_lowres_backward_warp_1to2.png", lowres_backward_warp_1to2)
 
 ########################################## 【3】 高分辨率上测试 warp, 双线性插值 ###########################################
 # 1. 首先把两个光流都上采样到高分辨率, 默认用 bilinear
-highres_bilinear_forward_flow  = cv2.resize(lowres_forward_flow,  (width, height), cv2.INTER_LINEAR)
-highres_bilinear_backward_flow = cv2.resize(lowres_backward_flow, (width, height), cv2.INTER_LINEAR)
+highres_bilinear_forward_flow  = cv2.resize(lowres_forward_flow,  (width, height), interpolation=cv2.INTER_LINEAR)
+highres_bilinear_backward_flow = cv2.resize(lowres_backward_flow, (width, height), interpolation=cv2.INTER_LINEAR)
 # 更大尺寸上, 要
 height_ratio = height / float(lowres_image1.shape[0])
 width_ratio  = width  / float(lowres_image1.shape[1])
@@ -147,8 +147,8 @@ add_to_save("test_highres_bilinear_backward_warp_1to2.png", highres_bilinear_bac
 
 
 ########################################## 【4】 高分辨率上测试 warp, 最近邻插值 ###########################################
-highres_nearest_forward_flow  = cv2.resize(lowres_forward_flow,  (width, height), cv2.INTER_CUBIC)
-highres_nearest_backward_flow = cv2.resize(lowres_backward_flow, (width, height), cv2.INTER_CUBIC)
+highres_nearest_forward_flow  = cv2.resize(lowres_forward_flow,  (width, height), interpolation=cv2.INTER_CUBIC)
+highres_nearest_backward_flow = cv2.resize(lowres_backward_flow, (width, height), interpolation=cv2.INTER_CUBIC)
 # 更大尺寸上, 要
 print("height_ratio  ", height_ratio, "\nweight_ratio  ", width_ratio)
 highres_nearest_forward_flow[:, :, 1]  *= height_ratio
@@ -156,7 +156,7 @@ highres_nearest_forward_flow[:, :, 0]  *= width_ratio
 highres_nearest_backward_flow[:, :, 1] *= height_ratio
 highres_nearest_backward_flow[:, :, 0] *= width_ratio
 
-# 为什么最近邻和 bilinear 的差距是 0 ??????
+# 最近邻和 bilinear 的差距是
 compute_mse = lambda x, y: numpy.abs(x - y).mean()
 print("{:.5f}".format(compute_mse(highres_nearest_forward_flow, highres_bilinear_forward_flow)))
 print("{:.5f}".format(compute_mse(highres_nearest_backward_flow, highres_bilinear_backward_flow)))
