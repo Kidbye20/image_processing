@@ -296,6 +296,144 @@ waiting
 
 
 
+## editing
+
+1. (2003 SIGGRAPH)**Poisson Image Editing**  [code]()   [知乎]()
+
+    泊松编辑（泊松融合），非常经典的文章，基于梯度域做图像编辑、图像融合！
+
+    <table>
+    	<tr>
+            <td align='center' valian='middle'><center><img src="editing/possion_image_editing/images/edit/14/background.png" width="370">背景</center></td>
+            <td align='center' valian='middle'><center><img src="editing/possion_image_editing/images/edit/14/foreground.png" width="370">前景</center></td>
+            <td align='center' valian='middle'><center><img src="editing/possion_image_editing/images/edit/14/mask.png" width="370">掩码</center></td>
+        </tr>
+        <tr>
+            <td align='center' valian='middle'><center><img src="editing/possion_image_editing/images/output/14/seam_clone.png" width="370">直接粘贴</center></td>
+            <td align='center' valian='middle'><center><img src="editing/possion_image_editing/images/output/14/pure_laplace_14.png" width="370">初步结果</center></td>
+            <td align='center' valian='middle'><center><img src="editing/possion_image_editing/images/output/14/mixed_splited_laplace_14.png" width="370">梯度混合</center></td>
+        </tr>
+    </table>
+
+    更多的应用包括纹理交换、局部纹理消除、局部纹理抹平、局部色彩变幻、局部动态范围压缩等。
+
+    
+
+## filter
+
+
+
+
+
+## fusion
+
+1. (2007)**Exposure Fusion**  [code]()   [知乎]()
+
+    经典的多曝光图像融合算法，但要求强对齐，使用了 Laplace Pyramid 融合消除 halo。
+
+    <table>
+    	<tr>
+            <td align='center' valian='middle'><center><img src="fusion/exposure_fusion/images/input/5/DSC_0165.png" width="370">曝光 1</center></td>
+            <td align='center' valian='middle'><center><img src="fusion/exposure_fusion/images/input/5/DSC_0169.png" width="370">曝光 2</center></td>
+            <td align='center' valian='middle'><center><img src="fusion/exposure_fusion/images/input/5/DSC_0171.png" width="370">曝光 3</center></td>
+        </tr>
+        <tr>
+            <td align='center' valian='middle'><center><img src="fusion/exposure_fusion/images/output/5/naive.png" width="370">直接融合 </center></td>
+            <td align='center' valian='middle'><center><img src="fusion/exposure_fusion/images/output/5/gaussi_smoothed.png" width="370">高斯平滑 </center></td>
+            <td align='center' valian='middle'><center><img src="fusion/exposure_fusion/images/output/5/laplace_pyramid.png" width="350">金字塔融合</center></td>
+        </tr>
+    </table>
+
+
+
+## geometry
+
+几何。这部分比较难，是计算机视觉三大问题之一。个人准备在这模块学习一些多视角变换、相机标定等知识，应用的话如一些 RACSAC、stitching 算法等等。
+
+waiting
+
+1. 二维旋转 [code](https://github.com/hermosayhl/image_processing/tree/main/geometry/affine_transformation/rotation)
+
+    
+
+
+
+## HDR
+
+这部分东西也比较多，资料不好找。目前先实现一些简单的 HDR，动态范围压缩。
+
+1. (2002)**Fast Bilateral Filtering for the Display of High-Dynamic-Range Images** [code]()   [知乎]()
+
+    <table>
+    	<tr>
+            <td align='center' valian='middle'><center><img src="./md_imgs/v2-8f368f3768f26a14ee3c34b1a5589220_720w.webp" width="370">输入</center></td>
+            <td align='center' valian='middle'><center><img src="hdr/bilateral_hdr/images/output/memorial_result.png" width="370">输出</center></td>
+            </tr>
+    </table>
+
+    
+
+
+
+## inpainting
+
+waiting
+
+
+
+## interpolation
+
+1. 最近邻 && bilinear && bicubic
+
+    目前只实现了 bilinear 和 bicubic 的 CPU 版本实现（为加速），后续会推出加速篇（CPU 优化和 CUDA 优化版本）
+
+    bilinear
+
+    bicubic
+
+    
+
+2. (2007 TOG)**Joint Bilateral Upsampling**    [code]()  [知乎]()
+
+    联合双边上采样算法。
+
+    这部分写了一版光流上采样的代码，但是效果不太好，后续有空再 debug
+
+ 
+
+## low-light
+
+1. (2011 SIGGRAPH)**Fast efficient algorithm for enhancement of low lighting video**   [code]()  [知乎]()
+
+    比较有创新的算法，对低光照图像的反转图像做去雾，再取反即可。
+
+    <table>
+    	<tr>
+            <td align='center' valian='middle'><center><img src="low-light\dong\images\input\a4542-Duggan_080411_6019.png" width="370">输入</center></td>
+            <td align='center' valian='middle'><center><img src="low-light\dong\images\output\enhanced.png" width="370">输出</center></td>
+        </tr>
+        <tr>
+            <td align='center' valian='middle'><center><img src="low-light\dong\images\output\inverse.png" width="370">反转图像</center></td>
+            <td align='center' valian='middle'><center><img src="low-light\dong\images\output\dehazed.png" width="370">去雾图像</center></td>
+        </tr>
+    </table>
+
+
+
+
+
+## matting
+
+
+
+## optical flow
+
+
+
+## super resolution
+
+
+
 
 
 ## 参考
