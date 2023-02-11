@@ -98,7 +98,7 @@ waiting
 颜色衰减先验
 
 <center>
-<img src="./md_imgs/image-20230211151635205.png" width=600/>
+<img src="./md_imgs/image-20230211151635205.png" width=600 align="middle"/>
 </center>
 
 去雾流程
@@ -120,9 +120,9 @@ waiting
 
 去噪算法
 
-1. anisotropic_diffusion 各向异性滤波
+1. (1990 TPAMI)**Scale-space and edge detection using anisotropic diffusion**   [code]()  [知乎]()
 
-    (1990 TPAMI)**Scale-space and edge detection using anisotropic diffusion**
+    anisotropic_diffusion 各向异性滤波
 
     <table>
         <tr>
@@ -142,11 +142,7 @@ waiting
         </tr>
     </table>
 
-3. bilateral filter 双边滤波
-
-    (1998)**Bilateral Filtering for Gray and Color Images**
-
-    提供 CPU/CUDA 实现，日后出优化专篇。
+3. bilateral filter 双边滤波，提供 CPU/CUDA 实现，日后出优化专篇。
 
     <table>
         <tr>
@@ -155,11 +151,9 @@ waiting
         </tr>
     </table>
 
-4. bilateral filter using grid 网格加速双边滤波
+4. (2006 ECCV)**A Fast Approximation of the Bilateral Filter using a Signal Processing Approach**
 
-    (2006 ECCV)**A Fast Approximation of the Bilateral Filter using a Signal Processing Approach**
-
-    目前参考官方实现，日后出 CUDA 版本。
+    bilateral filter using grid 网格加速双边滤波，目前参考官方实现，日后出 CUDA 版本。
 
     <table>
         <tr>
@@ -168,11 +162,9 @@ waiting
         </tr>
     </table>
 
-5. non local means 滤波
+5. (2005)**A non-local algorithm for image denoising**
 
-    (2005)**A non-local algorithm for image denoising**
-
-    提供 CPU/CUDA 实现。后续出优化专篇，其中涉及快速均值滤波。
+    non local means 滤波，提供 CPU/CUDA 实现。后续出优化专篇，其中涉及快速均值滤波。
 
     <table>
         <tr>
@@ -183,17 +175,141 @@ waiting
 
 
 
+## detection
+
+1. (1986)**A Computational Approach to Edge Detection**   [code]()  [知乎]()
+    Canny 边缘检测算法。
+
+    <table>
+        <tr>
+            <td align='center' valian='middle'><center><img src="detection/canny/images/input/a1058-_I2E8070.png" width="370">输入</center></td>
+            <td align='center' valian='middle'><center><img src="detection/canny/images/output/result.png" width="370">结果</center></td>
+        </tr>
+    </table>
+
+2. (1988)**A combined corner and edge detector**  [code]()  [知乎]()
+
+    Harris 角点检测算法。 
+
+    <table>
+        <tr>
+            <td align='center' valian='middle'><center><img src="detection/harris/images/input/harris_demo_1.png" height="500">输入</center></td>
+            <td align='center' valian='middle'><center><img src="detection/harris/images/output/1/original.png" height="500">结果</center></td>
+        </tr>
+    </table>
+
+3. **Laplace** 算子 [code]()  [知乎]()
+
+    边缘检测。
+
+    <table>
+        <tr>
+            <td align='center' valian='middle'><center><img src="detection/laplace/images/input/a0118-20051223_103622__MG_0617.png" width="370">输入</center></td>
+            <td align='center' valian='middle'><center><img src="detection/laplace/images/output/demo_2_edge.png" width="370">结果</center></td>
+        </tr>
+    </table>
+
+    **LOG**（Laplacian of Gaussian）检测特征点
+
+    <table>
+        <tr>
+            <td align='center' valian='middle'><center><img src="detection/laplace/images/input/a0032-jmac_MG_0266.png" width="370">输入</center></td>
+            <td align='center' valian='middle'><center><img src="detection/laplace/images/output/LOG_edge.png" width="370">边缘</center></td>
+        </tr>
+        <tr>
+            <td align='center' valian='middle'><center><img src="detection/laplace/images/output/LOG_peak.png" width="370">NMS</center></td>
+            <td align='center' valian='middle'><center><img src="detection/laplace/images/output/LOG_keypoints_detection.png" width="370">特征点</center></td>
+        </tr>
+    </table>
+
+4. (1983)**A Multiresolution Spline with Application to Image Mosaics** [code]()  [知乎]()
+
+    Laplace Pyramid 拉普拉斯金字塔。
+
+    图像压缩
+
+    <table>
+        <tr>
+            <td align='center' valian='middle'><center><img src="detection/laplace_pyramid/images/input/a2376-IMG_2891.png" width="370">输入</center></td>
+            <td align='center' valian='middle'><center><img src="detection/laplace_pyramid/images/output/compression/2/reconstructed_from_compressed.png" width="370">压缩</center></td>
+        </tr>
+    </table>
+
+    图像融合
+
+    <table>
+    	<tr>
+            <td align='center' valian='middle'><center><img src="detection/laplace_pyramid/images/input/blending/1/lhs.png" width="370">左图</center></td>
+            <td align='center' valian='middle'><center><img src="detection/laplace_pyramid/images/input/blending/1/rhs.png" width="370">右图</center></td>
+        </tr>
+        <tr>
+            <td align='center' valian='middle'><center><img src="detection/laplace_pyramid/images/input/blending/1/mask_2.png" width="370">掩码</center></td>
+            <td align='center' valian='middle'><center><img src="detection/laplace_pyramid/images/output/blending/1/blend_result_8.png" width="370">结果</center></td>
+        </tr>
+    </table>
+
+5. (2004 IJCV)**Distinctive Image Featuresfrom Scale-Invariant Keypoints**  [code]() [知乎]()
+
+    sift 尺度不变特征变换匹配算法！
+
+    在 CNN 火以前，计算机视觉中 SOTA 的图像特征提取器，分为两个阶段——特征检测 + 特征描述，提取的特征具有尺度不变性、旋转不变性、亮度不变性等。
+
+    这里只实现了第一阶段，利用 LOG 金字塔检测特征点，正确性尚未验证。后续有空会更新后续的特征点描述，并封装成一个接口（CPU/CUDA）。
+
+    <table>
+    	<tr>
+            <td align='center' valian='middle'><center><img src="detection/sift/cpu/images/input/a1219-IMG_3770.png" width="370">输入</center></td>
+            <td align='center' valian='middle'><center><img src="detection/sift/cpu/images/output/keypoints_13.png" width="370">结果</center></td>
+        </tr>
+    </table>
+
+6. (1997 IJCV)SUSAN: A New Approach to Low Level Image Processing [code]() [知乎]()
+
+    SUSAN，比较有意思的一个图像处理算子，可以处理包括角点检测、边缘检测、去噪等。
+
+    角点检测
+
+    <table>
+    	<tr>
+            <td align='center' valian='middle'><center><img src="detection/SUSAN/images/input/corner/a0515-NKIM_MG_6602.png" width="370">输入</center></td>
+            <td align='center' valian='middle'><center><img src="detection/SUSAN/images/output/corner_detection/French.png" width="370">输出</center></td>
+        </tr>
+    </table>
+
+    边缘检测
+
+    <table>
+    	<tr>
+            <td align='center' valian='middle'><center><img src="detection/SUSAN/images/input/corner/a3382-IMG_4032.png" width="370">输入</center></td>
+            <td align='center' valian='middle'><center><img src="detection/SUSAN/images/output/edge_detection/house_2.png" width="370">输出</center></td>
+        </tr>
+    </table>
+
+    去噪
+
+    <table>
+    	<tr>
+            <td align='center' valian='middle'><center><img src="detection/SUSAN/images/input/denoise/woman_3.jpg" width="370">输入</center></td>
+            <td align='center' valian='middle'><center><img src="detection/SUSAN/images/output/denoise/woman_3_result.png" width="370">输出</center></td>
+        </tr>
+    </table>
 
 
 
 
 
+## 参考
 
+测试图像来源
 
-
-
-
-
-
-
+```latex
+@inproceedings{bychkovsky2011learning,
+  title={Learning photographic global tonal adjustment with a database of input/output image pairs},
+  author={Bychkovsky, Vladimir and Paris, Sylvain and Chan, Eric and Durand, Fr{\'e}do},
+  booktitle={CVPR 2011},
+  pages={97--104},
+  year={2011},
+  organization={IEEE}
+}
+```
 
