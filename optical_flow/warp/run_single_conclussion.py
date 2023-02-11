@@ -61,6 +61,7 @@ diff = numpy.mean(diff.reshape((height * width, channel)), axis=-1).reshape((hei
 diff_threshold = 25
 mask = ((diff > diff_threshold) * 255).astype("uint8")
 cv_show(mask)
+cv_write("./results/backward_occulusion_once_value.png", mask)
 
 # 这种做法，有一个很明显的问题
 # 如果是亮度什么的没对齐, 或者说一些 HDR 场景, 直接比较亮度就会有问题
@@ -108,3 +109,4 @@ def forward_warp_for_mask(flow):
 
 occulussion_mask = forward_warp_for_mask(forward_flow)
 cv_show(occulussion_mask)
+cv_write("./results/backward_occulusion_once_forwardwarp.png", occulussion_mask)

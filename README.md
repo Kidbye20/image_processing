@@ -321,7 +321,29 @@ waiting
 
 ## filter
 
+这里会记录一些就基础、特殊的滤波器，提供 CPU 实现，有空尽力添加 CPU 加速实现和 CUDA 实现。
 
+1. **最值滤波**  [code]()  [知乎]()
+
+    <table>
+    	<tr>
+            <td align='center' valian='middle'><center><img src="filter/max_min_filter/2022.10/a0959-_DGW6327.png" width="370">输入</center></td>
+            <td align='center' valian='middle'><center><img src="filter/max_min_filter/2022.10/comparison.png" width="370">输出</center></td>
+        </tr>
+    </table>
+
+    最值滤波提供多种实现，测试图像分辨率 2832 x 4256，滤波直径 81，只测试局部邻域最小值，i5-10400f 单核单线程，C++ 开 O2 优化，结果如下
+
+    | 运行时间 | 时间复杂度 | 空间复杂度       | 时间复杂度       |
+    | -------- | ---------- | ---------------- | ---------------- |
+    | 暴力     | 65.141 s   | O(H * W * k * k) | O(1)             |
+    | 拆分     | 1.656 s    | O(H * W * k)     | O(HW)            |
+    | 单调队列 | 0.672 s    | O(HW)            | O(max(H, W) + k) |
+    | 动态规划 | 0.391 s    | O(HW)            | O(max(H, W))     |
+
+2. **均值滤波**
+
+    实现方式有盒子滤波、积分图，在引导滤波、人像美颜中都多有应用，在计划中。
 
 
 
@@ -418,21 +440,87 @@ waiting
         </tr>
     </table>
 
+    类似，可以对有雾图像取反，做低光照增强，再取反得到去雾图像。
 
+2. **histogram_equalization** 直方图均衡
+
+    直方图均衡算法，比较简单，可以增大图像的对比度，根据累积概率分布重构图像像素分布，增大动态范围。
+
+    ![image-20230211180353992](md_imgs/image-20230211180353992.png)
+
+3.  **MSRCR**   [code]()   [知乎]()
+
+    多尺度基于 Retinex 的图像增强算法
+
+    <table>
+    	<tr>
+            <td align='center' valian='middle'><center><img src="low-light/msrcr/input/Balloons.png" width="370">输入</center></td>
+            <td align='center' valian='middle'><center><img src="low-light/msrcr/output/SSR.png" width="370">SSR</center></td>
+        </tr>
+        <tr>
+            <td align='center' valian='middle'><center><img src="low-light/msrcr/output/MSR.png" width="370">MSR</center></td>
+            <td align='center' valian='middle'><center><img src="low-light/msrcr/output/MSRCR.png" width="355">MSRCR</center></td>
+        </tr>
+    </table>
 
 
 
 ## matting
 
+1. **A Bayesian Approach to Digital Matting**   [code]()  [知乎]()
+
+    目前提供 Linux 下的 C++ 实现，在 Windows 上使用 Eigen3 求解方程会死循环。在我电脑上（i5-10400f），单线程 0.48s 处理一张 640x480 的图像。
+
+    <table>
+    	<tr>
+            <td align='center' valian='middle'><center><img src="matting/bayers_matting/linux/images/input/input_4.bmp" width="290">输入</center></td>
+            <td align='center' valian='middle'><center><img src="matting/bayers_matting/linux/images/input/mask_4.bmp" width="270">trimap</center></td>
+            <td align='center' valian='middle'><center><img src="matting/bayers_matting/linux/images/output/alpha_4.png" width="280">alpha</center></td>
+        </tr>
+    </table>
+
 
 
 ## optical flow
+
+1. **warp 和遮挡检测**  [code]()   [知乎]()
+
+    <table>
+    	<tr>
+            <td align='center' valian='middle'><center><img src="optical_flow/warp/images/sintel/frame_0016.png" width="370">image1</center></td>
+            <td align='center' valian='middle'><center><img src="optical_flow/warp/images/sintel/frame_0017.png" width="370">image2</center></td>
+        </tr>
+        <tr>
+            <td align='center' valian='middle'><center><img src="optical_flow/warp/results/forward_flow_visualize.png" width="370">forward_flow</center></td>
+            <td align='center' valian='middle'><center><img src="optical_flow/warp/results/backward_flow_visualize.png" width="370">backward flow</center></td>
+        </tr>
+        <tr>
+            <td align='center' valian='middle'><center><img src="optical_flow/warp/results/forward_warp_1to2.png" width="370">forward_warp_1to</center></td>
+            <td align='center' valian='middle'><center><img src="optical_flow/warp/results/backward_warp_1to2.png" width="370">backward_warp_1to2</center></td>
+        </tr>
+        <tr>
+            <td align='center' valian='middle'><center><img src="optical_flow/warp/results/forward_occulusion_using_value.png" width="370">orward_occulusion_using_value</center></td>
+            <td align='center' valian='middle'><center><img src="optical_flow/warp/results/backward_occulusion_using_value.png" width="370">backward_occulusion_using_value</center></td>
+        </tr>
+        <tr>
+            <td align='center' valian='middle'><center><img src="optical_flow/warp/results/forward_occulusion_using_pos.png" width="370">forward_occulusion_using_pos</center></td>
+            <td align='center' valian='middle'><center><img src="optical_flow/warp/results/backward_occulusion_using_pos.png" width="370">backward_occulusion_using_pos</center></td>
+        </tr>
+        <tr>
+            <td align='center' valian='middle'><center><img src="optical_flow/warp/results/backward_occulusion_once_value.png" width="370">backward_occulusion_once_value</center></td>
+            <td align='center' valian='middle'><center><img src="optical_flow/warp/results/backward_occulusion_once_forwardwarp.png" width="370">backward_occulusion_once_warp</center></td>
+        </tr>
+    </table>
 
 
 
 ## super resolution
 
+1. (2021 CVPR)**Practical Single-Image Super-Resolution Using Look-Up Table**  [code]()
 
+    比较有创新的深度学习超分辨率算法！这里提供 CPU/CUDA 的 C++ 推理实现。
+
+    ![image-20230211181601780](md_imgs/image-20230211181601780.png)
 
 
 

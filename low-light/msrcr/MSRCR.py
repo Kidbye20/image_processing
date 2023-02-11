@@ -95,6 +95,7 @@ result = MSRCR(
 	weights=[0.2, 0.2, 0.2, 0.3, 0.1], 
 	alpha=128, 
 	dynamic=2.0)
+cv2.imwrite("./output/MSRCR.png", result)
 cv_show(numpy.concatenate([low_light, result], axis=1))
 
 # 单尺度增强
@@ -105,8 +106,10 @@ result = SSR(low_light, 50)
 cv_show(numpy.concatenate([low_light, result], axis=1))
 
 result = SSR(low_light, 100)
+cv2.imwrite("./output/SSR.png", result)
 cv_show(numpy.concatenate([low_light, result], axis=1))
 
 # 多尺度增强
 result = MSR(low_light, [5, 25, 50, 75, 100], [0.2, 0.2, 0.2, 0.3, 0.1])
+cv2.imwrite("./output/MSR.png", result)
 cv_show(numpy.concatenate([low_light, result], axis=1))
