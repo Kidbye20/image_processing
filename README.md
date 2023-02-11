@@ -89,7 +89,7 @@ waiting
 
 颜色衰减先验
 
-![image-20230211151635205](F:\liuchang\code\image_processing\md_imgs\image-20230211151635205.png)
+![image-20230211151635205](./md_imgs/image-20230211151635205.png)
 
 去雾流程
 
