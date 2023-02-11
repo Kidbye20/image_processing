@@ -122,9 +122,14 @@ print("全局大气光 A  ", A)
 t = numpy.atleast_3d(t)
 J = (I - A) / t + A
 J = numpy.clip(J * 255, 0, 255).astype("uint8")
-cv_show(numpy.concatenate([haze_image, J], axis=1))
+# cv_show(numpy.concatenate([haze_image, J], axis=1))
 
 # 展示细节
 history["haze removal result"] = J
 for l, r in history.items():
 	cv_show(r, l)
+
+save_dir = "./images/output"
+os.makedirs(save_dir, exist_ok=True)
+for l, r in history.items():
+	cv2.imwrite(os.path.join(save_dir, "{}.png".format(l)), r)
