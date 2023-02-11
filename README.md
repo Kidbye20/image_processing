@@ -69,15 +69,15 @@ waiting
 
 <table>
     <tr>
-        <td ><center><img src="./dehaze/single_dehaze_he/images/output/prior/1.jpg" height="160" width="400">无雾场景</center></td>
-        <td ><center><img src="./dehaze/single_dehaze_he/images/output/prior/0160_0.9_0.2.jpg"  height="160" width="400" >有雾场景</center></td>
+        <td align='center' valian='middle'><center><img src="./dehaze/single_dehaze_he/images/output/prior/1.jpg" height="160" width="400">无雾场景</center></td>
+        <td align='center' valian='middle'><center><img src="./dehaze/single_dehaze_he/images/output/prior/0160_0.9_0.2.jpg"  height="160" width="400" >有雾场景</center></td>
     </tr>
 </table>
 
 <table>
     <tr>
-        <td ><center><img src="./dehaze/single_dehaze_he/images/input/canon3.bmp" >输入</center></td>
-        <td ><center><img src="./dehaze/single_dehaze_he/images/official_result/canon3_res.png"  >结果</center></td>
+        <td align='center' valian='middle'><center><img src="./dehaze/single_dehaze_he/images/input/canon3.bmp" >输入</center></td>
+        <td align='center' valian='middle'><center><img src="./dehaze/single_dehaze_he/images/official_result/canon3_res.png"  >结果</center></td>
     </tr>
 </table>
 
@@ -95,14 +95,14 @@ waiting
 
 <table>
     <tr>
-        <td ><center><img src="./dehaze/fast_cap/images/input/swan.png" >输入</center></td>
-        <td ><center><img src="./dehaze/fast_cap/images/output/original depth.png"  >深度图</center></td>
-        <td ><center><img src="./dehaze/fast_cap/images/output/depth min block.png"  >暗通道</center></td>
+        <td align='center' valian='middle'><center><img src="./dehaze/fast_cap/images/input/swan.png" >输入</center></td>
+        <td align='center' valian='middle'><center><img src="./dehaze/fast_cap/images/output/original depth.png"  >深度图</center></td>
+        <td align='center' valian='middle'><center><img src="./dehaze/fast_cap/images/output/depth min block.png"  >暗通道</center></td>
     </tr>
     <tr>
-    	<td ><center><img src="./dehaze/fast_cap/images/output/refined depth by guidedFilter.png"  >引导滤波</center></td>
-        <td ><center><img src="./dehaze/fast_cap/images/output/pixels used for evaluate A.png"  >最远点</center></td>
-        <td ><center><img src="./dehaze/fast_cap/images/output/haze removal result.png"  >结果</center></td>
+    	<td align='center' valian='middle'><center><img src="./dehaze/fast_cap/images/output/refined depth by guidedFilter.png"  >引导滤波</center></td>
+        <td align='center' valian='middle'><center><img src="./dehaze/fast_cap/images/output/pixels used for evaluate A.png"  >最远点</center></td>
+        <td align='center' valian='middle'><center><img src="./dehaze/fast_cap/images/output/haze removal result.png"  >结果</center></td>
     </tr>
 </table>
 
