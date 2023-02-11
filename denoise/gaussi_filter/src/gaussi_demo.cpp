@@ -52,8 +52,8 @@ void test_bgr_image(const cv::Mat& noise_image) {
     // 展示图像信息
     cv_info(noise_image);
     // 准备高斯滤波的参数, 滤波核大小与方差
-    const int kernel_size = 15;
-    const double variance = 3;
+    const int kernel_size = 21;
+    const double variance = 5;
     // self
     cv::Mat gaussi_result, faster_gaussi_result, opencv_gaussi_result;
     run([&noise_image, &gaussi_result, kernel_size, variance]{
@@ -68,6 +68,7 @@ void test_bgr_image(const cv::Mat& noise_image) {
     }, "OpenCV   :  ");
     std::cout << "PSNR  " << cv::PSNR(gaussi_result, faster_gaussi_result) << std::endl;
     // 并排展示去噪结果
+    cv::imwrite("../images/output/woman_1.png", faster_gaussi_result);
     cv_show(cv_concat(std::vector<cv::Mat>({noise_image, gaussi_result, faster_gaussi_result, opencv_gaussi_result})));
 }
 
@@ -98,7 +99,7 @@ void test_gray_image(const cv::Mat& noise_image) {
 int main() {
     std::cout << "opencv  :  " << CV_VERSION << std::endl;
     // 根据图片路径读取图像
-    const char* noise_path = "./images/input/Kodak24/18.png";
+    const char* noise_path = "../images/input/woman_1.png";
     const auto noise_image = cv::imread(noise_path);
     if(noise_image.empty()) {
         std::cout << "读取图片  " << noise_path << "  失败 !" << std::endl;

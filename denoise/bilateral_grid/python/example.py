@@ -28,6 +28,7 @@ lib.fast_bilateral_approximation(
 
 # 转换
 result = (result * 255).astype("uint8")
+cv2.imwrite("output.png", result, [cv2.IMWRITE_PNG_COMPRESSION, 0])
 cv2.imshow('crane', result)
 cv2.waitKey(0)
 cv2.destroyAllWindows()

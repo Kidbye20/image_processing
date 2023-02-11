@@ -49,7 +49,7 @@ namespace {
 
 void denoise_gray_demo() {
     // 根据图片路径读取图像
-    const char* noise_path = "./images/input/denoise/Kodak24/20.png";
+    const char* noise_path = "../images/input/denoise/Kodak24/20.png";
     auto noise_image = cv::imread(noise_path);
     if(noise_image.empty()) {
         std::cout << "读取图片  " << noise_path << "  失败 !" << std::endl;
@@ -76,7 +76,7 @@ void denoise_gray_demo() {
     const auto comparison_resultss = cv_concat({noise_image, denoised, denoised_fast_1, denoised_fast_2, denoised_fast_3});
     cv_show(comparison_resultss);
     // 保存结果
-    const std::string save_path("./images/output/comparison_gray.png");
+    const std::string save_path("../images/output/comparison_gray.png");
     cv::imwrite(save_path, comparison_resultss, std::vector<int>({cv::IMWRITE_PNG_COMPRESSION, 0}));
 }
 
@@ -84,7 +84,7 @@ void denoise_gray_demo() {
 
 void denoise_rgb_demo_1() {
     // 根据图片路径读取图像
-    const char* noise_path = "./images/input/denoise/woman_1.png";
+    const char* noise_path = "../images/input/denoise/Kodak24/20.png";
     auto noise_image = cv::imread(noise_path);
     if(noise_image.empty()) {
         std::cout << "读取图片  " << noise_path << "  失败 !" << std::endl;
@@ -98,8 +98,8 @@ void denoise_rgb_demo_1() {
     const auto comparison_resultss = cv_concat({noise_image, denoised});
     cv_show(comparison_resultss);
     // 保存结果
-    const std::string save_path("./images/output/comparison_color_woman_1.png");
-    cv::imwrite(save_path, comparison_resultss, std::vector<int>({cv::IMWRITE_PNG_COMPRESSION, 0}));
+    const std::string save_path("../images/output/Kodak24.png");
+    cv::imwrite(save_path, denoised, std::vector<int>({cv::IMWRITE_PNG_COMPRESSION, 0}));
 }
 
 

@@ -41,7 +41,7 @@
 
 ## colorization
 
-(2004 SIGGRAPH)**Colorization using Optimization ** [code](https://github.com/hermosayhl/image_processing/tree/main/colorization/colorization_using_optimization)
+(2004 SIGGRAPH)**Colorization using Optimization**  [code](https://github.com/hermosayhl/image_processing/tree/main/colorization/colorization_using_optimization)
 
 基于涂鸦的自动着色
 
@@ -53,13 +53,19 @@
     </tr>
 </table>
 
+
+
 ## compression
 
 waiting
 
+
+
 ## deblur
 
 waiting
+
+
 
 ## dehaze
 
@@ -83,13 +89,17 @@ waiting
 
 代码中包含了暗通道先验验证、guided filter 精细化等内容。
 
+
+
 (2015 TIP)**A Fast Single Image Haze Removal Algorithm Using Color Attenuation Prior**  [code](https://github.com/hermosayhl/image_processing/tree/main/dehaze/fast_cap)
 
 基于颜色衰减先验的去雾算法，使用机器学习估计参数
 
 颜色衰减先验
 
-![image-20230211151635205](./md_imgs/image-20230211151635205.png)
+<center>
+<img src="./md_imgs/image-20230211151635205.png" width=600/>
+</center>
 
 去雾流程
 
@@ -106,9 +116,70 @@ waiting
     </tr>
 </table>
 
+## denoise
 
+去噪算法
 
+1. anisotropic_diffusion 各向异性滤波
 
+    (1990 TPAMI)**Scale-space and edge detection using anisotropic diffusion**
+
+    <table>
+        <tr>
+            <td align='center' valian='middle'><center><img src="denoise/anisotropic_diffusion/images/input/woman_3.jpg" height="500">输入</center></td>
+            <td align='center' valian='middle'><center><img src="denoise/anisotropic_diffusion/images/output/demo_2.png" height="500">结果</center></td>
+        </tr>
+    </table>
+
+2. gaussian filter 高斯滤波
+
+    后续将出优化专篇。
+
+    <table>
+        <tr>
+            <td align='center' valian='middle'><center><img src="denoise/gaussi_filter/images/input/woman_1.png" height="500">输入</center></td>
+            <td align='center' valian='middle'><center><img src="denoise/gaussi_filter/images/output/woman_1.png" height="500">结果</center></td>
+        </tr>
+    </table>
+
+3. bilateral filter 双边滤波
+
+    (1998)**Bilateral Filtering for Gray and Color Images**
+
+    提供 CPU/CUDA 实现，日后出优化专篇。
+
+    <table>
+        <tr>
+            <td align='center' valian='middle'><center><img src="denoise/bilateral_filter/images/woman_2.png" height="300">输入</center></td>
+            <td align='center' valian='middle'><center><img src="denoise/bilateral_filter/images/woman_2_bilateral_filter_cpu.png" height="300">结果</center></td>
+        </tr>
+    </table>
+
+4. bilateral filter using grid 网格加速双边滤波
+
+    (2006 ECCV)**A Fast Approximation of the Bilateral Filter using a Signal Processing Approach**
+
+    目前参考官方实现，日后出 CUDA 版本。
+
+    <table>
+        <tr>
+            <td align='center' valian='middle'><center><img src="denoise/bilateral_grid/python/example.png" height="270">输入</center></td>
+            <td align='center' valian='middle'><center><img src="denoise/bilateral_grid/python/output.png" height="270">结果</center></td>
+        </tr>
+    </table>
+
+5. non local means 滤波
+
+    (2005)**A non-local algorithm for image denoising**
+
+    提供 CPU/CUDA 实现。后续出优化专篇，其中涉及快速均值滤波。
+
+    <table>
+        <tr>
+            <td align='center' valian='middle'><center><img src="denoise/non_local_means/cpu/images/input/denoise/Kodak24/20.png" height="350">输入</center></td>
+            <td align='center' valian='middle'><center><img src="denoise/non_local_means/cpu/images/output/Kodak24.png" height="350">结果</center></td>
+        </tr>
+    </table>
 
 
 
