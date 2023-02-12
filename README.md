@@ -63,7 +63,7 @@ xmake run
 
 ## colorization
 
-(2004 SIGGRAPH)**Colorization using Optimization **  [paper](colorization/colorization_using_optimization/references/(2004 SIGGRAPH)Colorization using Optimization.pdf)  [code](https://github.com/hermosayhl/image_processing/tree/main/colorization/colorization_using_optimization) 
+(2004 SIGGRAPH)**Colorization using Optimization**  [paper](colorization/colorization_using_optimization/references/(2004 SIGGRAPH)Colorization using Optimization.pdf)  [code](https://github.com/hermosayhl/image_processing/tree/main/colorization/colorization_using_optimization) 
 
 基于涂鸦的自动着色
 
