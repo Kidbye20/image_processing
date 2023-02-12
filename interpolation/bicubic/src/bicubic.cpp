@@ -187,23 +187,25 @@ cv::Mat bicubic_interpolate(const cv::Mat& origin, const std::pair<int, int>& _s
 
 int main() {
 	// 读取图像
-	const std::string image_path("./images/input/a1016-050716_115658__I2E4159.png");
+	const std::string image_path("../images/input/a1016-050716_115658__I2E4159.png");
 	cv::Mat origin_image = cv::imread(image_path);
     assert(not origin_image.empty());
     cv_show(origin_image);
 
     // 先把图变小
-    const auto small = bicubic_interpolate(origin_image, {50, 75});
+    const auto small = bicubic_interpolate(origin_image, {200, 300});
 
     // 双立方插值, 把图变大
-    const auto big = bicubic_interpolate(small, {600, 900});
+    constexpr int target_h = 1200;
+    constexpr int target_w = 1800;
+    const auto big = bicubic_interpolate(small, {target_h, target_w});
 
     // 和双线性插值对比
-    const auto bilinear_big = bilinear_interpolate(small, {600, 900});
+    const auto bilinear_big = bilinear_interpolate(small, {target_h, target_w});
 
     // 和 OpenCV 内置实现对比
     cv::Mat cv_big;
-    cv::resize(small, cv_big, {900, 600}, cv::INTER_CUBIC);
+    cv::resize(small, cv_big, {target_w, target_h}, cv::INTER_CUBIC);
 
     // 展示
     cv_show(small);
@@ -215,7 +217,7 @@ int main() {
     cv_show(concat);
 
     // 保存结果
-    const std::string output_path("./images/output/");
+    const std::string output_path("../images/output/");
     cv_write(small, output_path + "small.png");
     cv_write(big, output_path + "big.png");
     return 0;
