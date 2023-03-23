@@ -29,7 +29,7 @@ make_show        = True if (height * width < 1024 * 768) else False
 
 
 # 获取 image1 → image2 的光流
-use_flow_cache      = False
+use_flow_cache      = True
 save_flow_cache     = False
 forward_flow_cache  = "./images/sintel/forward_flow.npy"
 backward_flow_cache = "./images/sintel/backward_flow.npy"
@@ -49,9 +49,9 @@ if (save_flow_cache and make_show):
 # 展示光流
 forward_flow_visualize  = flow_viz.flow_to_image(forward_flow)[:, :, ::-1]
 backward_flow_visualize = flow_viz.flow_to_image(backward_flow)[:, :, ::-1]
-if (make_show):
-	cv_show(forward_flow_visualize)
-	cv_show(backward_flow_visualize)
+# if (make_show):
+# 	cv_show(forward_flow_visualize)
+# 	cv_show(backward_flow_visualize)
 cv_write("./results/forward_flow_visualize.png",  forward_flow_visualize)
 cv_write("./results/backward_flow_visualize.png", backward_flow_visualize)
 
@@ -64,9 +64,10 @@ os.system("g++ -fPIC -shared -O2 ./crane_warp.cpp -o {}".format(warp_lib_path))
 warp_lib = ctypes.cdll.LoadLibrary(warp_lib_path)
 
 # 简易接口
-def forward_warp(x, flow, mode=""):
+def forward_warp(x, flow, mode="", guide=None):
 	h, w, c = x.shape
 	warped = numpy.zeros((h, w, c), x.dtype)
+	assert x.shape[:2] == flow.shape[:2], "x and flow must have same shape"
 	# 如果在 warp 阶段使用插值
 	if (mode == "full"):
 		warp_lib.full_forward_warp_using_flow(
@@ -80,6 +81,16 @@ def forward_warp(x, flow, mode=""):
 		warp_lib.interp_forward_warp_using_flow(
 			warped.ctypes.data_as(ctypes.c_char_p),
 			x.ctypes.data_as(ctypes.c_char_p),
+			flow.ctypes.data_as(ctypes.c_char_p),
+			h, w, c, 2
+		)
+	# 如果用引导图来帮助判断多个点映射到同一个位置
+	elif (mode == "guide" and guide is not None):
+		assert guide.shape[:2] == flow.shape[:2], "guide and flow must have same shape"
+		warp_lib.guided_forward_warp_using_flow(
+			warped.ctypes.data_as(ctypes.c_char_p),
+			x.ctypes.data_as(ctypes.c_char_p),
+			guide.ctypes.data_as(ctypes.c_char_p),
 			flow.ctypes.data_as(ctypes.c_char_p),
 			h, w, c, 2
 		)
@@ -99,12 +110,18 @@ forward_warp_1to2 = forward_warp(image1, forward_flow)
 cv_write("./results/forward_warp_1to2.png", forward_warp_1to2)
 if (make_show): cv_show(forward_warp_1to2)
 
-# 尝试第一种 warp
+# 尝试第一种 forward warp, 对每一个点都重新插值
 forward_warp_1to2_full = forward_warp(image1, forward_flow, mode="full")
 cv_write("./results/forward_warp_1to2_full.png", forward_warp_1to2_full)
 if (make_show): cv_show(forward_warp_1to2_full)
 
-# 尝试第二种 warp
+# 尝试第二种 forward warp, 只对那些缺失的地方重新插值
 forward_warp_1to2_interp = forward_warp(image1, forward_flow, mode="interpolation")
 cv_write("./results/forward_warp_1to2_interp.png", forward_warp_1to2_interp)
 if (make_show): cv_show(forward_warp_1to2_interp)
+
+
+# 尝试第三种 forward warp, 借助目标图来判断多个点冲突的问题
+forward_warp_1to2_guided = forward_warp(image1, forward_flow, mode="guide", guide=image2)
+cv_write("./results/forward_warp_1to2_guided.png", forward_warp_1to2_guided)
+if (make_show): cv_show(forward_warp_1to2_guided)

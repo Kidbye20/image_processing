@@ -7,8 +7,8 @@
 #include <algorithm>
 
 
-template<typename T, typename A, typename B>
-inline T clip(const T x, const A lhs, const B rhs) {
+template<typename S=float, typename T=unsigned char>
+inline T clip(const S x, const T lhs, const T rhs) {
 	if (x < lhs) return lhs;
 	else if (x > rhs) return rhs;
 	else return x;
@@ -72,8 +72,7 @@ void backward_warp_using_flow_inplementation(
 					float down_value = y_low_weight * Q3 + y_high_weight * Q4;
 					// 上下加权
 					float value = x_low_weight * up_value + x_high_weight * down_value;
-					result[(i * width + j) * channel + c] = 
-						clip<type, type, type>(value, 0, 255);
+					result[(i * width + j) * channel + c] = clip(value, 0, 255);
 				}
 			}
 			// 如果是最近邻插值
@@ -149,7 +148,12 @@ inline T square(const T x) {
 }
 
 
-
+/*
+	这种 full 做法不行
+		1. 加权半径 radius 设置多大? 不好控制
+		2. 速度太慢, 不可取
+		3. 加权导致 warp 结果变模糊, 丢失高频细节
+*/
 void full_forward_warp_using_flow_inplementation(
 		unsigned char* result, 
 		unsigned char* source,
@@ -269,42 +273,34 @@ void interp_forward_warp_using_flow_inplementation(
 	}
 	// 第二轮, 找到没被赋值的点, 做赋值
 
-	// 准备一些查表的变量
-	const int spatial_size = square<int>(2 * radius + 1);
-	std::vector< std::pair<int, float> > spatial_lut;
-	for (int x = -radius; x <= radius; ++x) {
-		for (int y = -radius; y <= radius; ++y) {
-			spatial_lut.emplace_back(x * width + y, std::exp(-(square(x) + square(y)) / (2 * square<float>(0.9f))));
-		}
-	} 
-
-	for (int i = radius, i_end = height - radius; i < i_end; ++i) {
-		for (int j = radius, j_end = width - radius; j < j_end; ++j) {
-			// 判断当前前是否被赋值过, 注意上面光流强度一定是大于等于 0 的, 
-			// 则小于 0 的就是没被赋值的, 需要做插值
+	// 准备上下左右四个点的偏移量
+	std::vector<int> neighbor_offset({-width, -1, 1, width});
+	for (int i = 1, i_end = height - 1; i < i_end; ++i) {
+		for (int j = 1, j_end = width - 1; j < j_end; ++j) {
+			// 获取当前位置
 			const int this_pos = i * width + j;
+			// 判断当前位置是否空白的
 			if (flow_intensity[this_pos] < 0) {
-				// 初始化加权量
-				float weight_sum{0.f};
-				std::vector<float> temp(channel, 0.f);
-				// 遍历这个点的邻域
-				for (int k = 0; k < spatial_size; ++k) {
-					// 判断这个点是不是空的, 得有精确的值才能赋值
-					int neighbor = this_pos + spatial_lut[k].first;
-					if (flow_intensity[neighbor] < 0)
+				float weight_sum = 0.f;
+				// 准备存储 rgb 的累计加权值
+				std::vector<int> temp_sum(3, 0.f);
+				// 遍历上下左右
+				for (int k = 0; k < 4; ++k) {
+					// 获取邻居点
+					const int neighbor_pos = this_pos + neighbor_offset[k];
+					// 如果邻居点没有值, 就不加权
+					if (flow_intensity[neighbor_pos] < 0)
 						continue;
-					// 可以加权
-					float spatial_weight = spatial_lut[k].second;
-					weight_sum += spatial_weight;
-					unsigned char* src_ptr = source + neighbor * channel;
+					weight_sum += 1.f;
+					// 这里注意, 采样来源是 result, 而不是 source
 					for (int c = 0; c < channel; ++c) {
-						temp[c] += spatial_weight * src_ptr[c];
+						temp_sum[c] += result[neighbor_pos * channel + c];
 					}
 				}
-				// 赋值
+				// 写入
 				unsigned char* res_ptr = result + this_pos * channel;
 				for (int c = 0; c < channel; ++c) {
-					res_ptr[c] = clip(temp[c] / weight_sum, 0, 255);
+					res_ptr[c] = clip(temp_sum[c] / weight_sum, 0, 255);
 				}
 			}
 		}
@@ -313,6 +309,60 @@ void interp_forward_warp_using_flow_inplementation(
 
 
 
+
+
+
+template<typename S=unsigned char, typename T=float>
+T compute_rgb_diff(const S* const lhs, const S* const rhs, const int length) {
+	T result = 0;
+	for (int i = 0; i < length; ++i) {
+		result += std::abs(lhs[i] - rhs[i]);
+	}
+	return result;
+}
+
+
+
+void guided_forward_warp_using_flow_inplementation(
+		unsigned char* result, 
+		unsigned char* source,
+		unsigned char* guide,
+		float* flow,
+		int height,
+		int width,
+		int channel) {
+	printf("[%d %d %d]\n", height, width, channel);
+	// 记录一个跟 guide 图像最接近的差异
+	std::vector<float> difference(height * width, 1e8);
+	// 遍历每一个点
+	for (int i = 0; i < height; ++i) {
+		for (int j = 0; j < width; ++j) {
+			// 获取 (i, j) 的光流值
+			const int this_pos = i * width + j;
+			const float v = flow[2 * this_pos];
+			const float u = flow[2 * this_pos + 1];
+			// 运动到 (i + u, j + v) 位置上, 取整
+			int x = nearest_round(i + u);
+			int y = nearest_round(j + v);
+			// 截断在合法范围内
+			x = clip<int, int>(x, 0, height - 1);
+			y = clip<int, int>(y, 0, width - 1);
+			const int target_pos = x * width + y;
+			// 计算 source(i, j) 跟 guide(x, y) 的相似性
+			float diff = compute_rgb_diff(source + this_pos * channel, guide + target_pos * channel, channel);
+			// 判断运动到这里的点 source(i, j) 距离 guide(x, y) 会不会更小
+			if (diff < difference[target_pos]) {
+				difference[target_pos] = diff;
+				// 此时可以把 source(i, j) 的点移动到 result(x, y)
+				unsigned char* source_start = source + this_pos * channel;
+				unsigned char* result_start = result + target_pos * channel;
+				for (int c = 0; c < channel; ++c) {
+					result_start[c] = source_start[c];
+				}
+			}
+		}
+	}
+}
 
 
 
@@ -474,6 +524,17 @@ extern "C" {
 		int channel, 
 		int radius) {
 		interp_forward_warp_using_flow_inplementation(result, source, flow, height, width, channel, radius);
+	}
+
+	void guided_forward_warp_using_flow(
+		unsigned char* result, 
+		unsigned char* source,
+		unsigned char* guide,
+		float* flow,
+		int height,
+		int width,
+		int channel) {
+		guided_forward_warp_using_flow_inplementation(result, source, guide, flow, height, width, channel);
 	}
 
 
